@@ -56,8 +56,14 @@ class StoryManager:
 
         # 1. Quitter le nœud actuel
         if self.current_node:
+            # Support Legacy (Text Scripts)
             exit_scripts = self.current_node.logic.get("on_exit", [])
-            self.parser.execute_script(exit_scripts)
+            if isinstance(exit_scripts, list) and exit_scripts and isinstance(exit_scripts[0], str):
+                self.parser.execute_script(exit_scripts)
+            # Support New (Structured Events)
+            elif isinstance(exit_scripts, list):
+                self.parser.execute_events(exit_scripts)
+            
             self.history.append(self.current_node.id)
 
         # 2. Changer de nœud
@@ -65,7 +71,12 @@ class StoryManager:
 
         # 3. Entrer dans le nouveau nœud
         enter_scripts = self.current_node.logic.get("on_enter", [])
-        self.parser.execute_script(enter_scripts)
+        # Support Legacy
+        if isinstance(enter_scripts, list) and enter_scripts and isinstance(enter_scripts[0], str):
+            self.parser.execute_script(enter_scripts)
+        # Support New
+        elif isinstance(enter_scripts, list):
+            self.parser.execute_events(enter_scripts)
 
         # (L'interface graphique écoutera le changement via current_node et se mettra à jour)
 
@@ -86,46 +97,53 @@ class StoryManager:
 
         choices = []
 
-        # Trouver tous les liens partant de ce nœud
-        # On suppose que output_socket_index correspond à l'index du choix
-        outgoing_edges = [
-            e for e in self.project.edges
-            if e.start_node_id == self.current_node.id
-        ]
+        # Stratégie : 
+        # 1. Si le nœud a des choix définis explicitement dans content['choices'], on les utilise.
+        # 2. Sinon, on déduit les choix depuis les liens sortants (Legacy/Fallback).
 
-        # Trier par index de socket pour garder l'ordre visuel
-        outgoing_edges.sort(key=lambda x: x.start_socket_index)
+        structured_choices = self.current_node.content.get("choices", [])
+        
+        if structured_choices:
+            # Mode Structuré
+            for choice_data in structured_choices:
+                # Vérifier condition
+                condition = choice_data.get("condition", "")
+                if not self.parser.evaluate_condition(condition):
+                    continue
 
-        for edge in outgoing_edges:
-            target_node = self.project.nodes.get(edge.end_node_id)
-            if not target_node:
-                continue
+                target_id = choice_data.get("target_node_id")
+                if not target_id:
+                    continue
 
-            # Ici, dans une implémentation avancée, le texte du choix serait stocké
-            # soit sur le lien, soit dans une liste "choices" interne au nœud source.
-            # Pour ce modèle simplifié, nous allons chercher le texte du choix
-            # dans les propriétés du nœud source si disponible, ou utiliser le titre de la cible.
+                choices.append({
+                    "text": choice_data.get("text", "Choix"),
+                    "target_id": target_id
+                })
+        else:
+            # Mode Legacy (Déduction depuis les Edges)
+            # Trouver tous les liens partant de ce nœud
+            outgoing_edges = [
+                e for e in self.project.edges
+                if e.start_node_id == self.current_node.id
+            ]
+            outgoing_edges.sort(key=lambda x: x.start_socket_index)
 
-            # Exemple de structure interne de choices dans NodeModel pour Dialogue :
-            # "choices": [{"text": "Ouvrir la porte", "condition": "has_key"}, ...]
+            for edge in outgoing_edges:
+                target_node = self.project.nodes.get(edge.end_node_id)
+                if not target_node:
+                    continue
 
-            node_choices_data = self.current_node.content.get("choices", [])
-            choice_data = {}
+                # On essaie de récupérer des infos de choix legacy si elles existent
+                node_choices_data = self.current_node.content.get("choices_legacy", [])
+                choice_data = {}
+                if len(node_choices_data) > edge.start_socket_index:
+                    choice_data = node_choices_data[edge.start_socket_index]
 
-            # Essayer de mapper l'edge à une donnée de choix
-            if len(node_choices_data) > edge.start_socket_index:
-                choice_data = node_choices_data[edge.start_socket_index]
-
-            # Vérifier la condition
-            condition = choice_data.get("condition", "")
-            if not self.parser.evaluate_condition(condition):
-                continue  # Choix masqué si condition non remplie
-
-            choices.append({
-                "text": choice_data.get("text", f"Vers {target_node.title}"),
-                "target_id": target_node.id,
-                "edge": edge
-            })
+                choices.append({
+                    "text": choice_data.get("text", f"Vers {target_node.title}"),
+                    "target_id": target_node.id,
+                    "edge": edge
+                })
 
         return choices
 

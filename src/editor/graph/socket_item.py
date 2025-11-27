@@ -45,12 +45,12 @@ class SocketItem(QGraphicsItem):
         """Dessine le cercle."""
         painter.setBrush(self._brush)
         painter.setPen(self._pen)
-        painter.drawEllipse(
+        painter.drawEllipse(QRectF(
             -self.radius,
             -self.radius,
             2 * self.radius,
             2 * self.radius
-        )
+        ))
 
     def get_scene_pos(self):
         """Retourne la position absolue dans la scène (utile pour dessiner les liens)."""

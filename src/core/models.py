@@ -79,6 +79,64 @@ class EdgeModel:
 
 
 @dataclass
+class ItemModel:
+    """
+    Représente un objet (Item) dans le jeu.
+    """
+    id: str = field(default_factory=generate_id)
+    name: str = "Nouvel Objet"
+    type: str = "misc"  # weapon, armor, potion, quest, misc
+    description: str = ""
+    icon: str = "misc"  # Clé d'icône (ex: 'sword', 'potion')
+    stackable: bool = True
+    bonuses: Dict[str, float] = field(default_factory=dict)  # ex: {"strength": 5}
+    properties: Dict[str, Any] = field(default_factory=dict)  # Custom props
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'ItemModel':
+        return ItemModel(
+            id=data.get("id", generate_id()),
+            name=data.get("name", "Nouvel Objet"),
+            type=data.get("type", "misc"),
+            description=data.get("description", ""),
+            icon=data.get("icon", "misc"),
+            stackable=data.get("stackable", True),
+            bonuses=data.get("bonuses", {}),
+            properties=data.get("properties", {})
+        )
+
+
+@dataclass
+class QuestModel:
+    """
+    Représente une quête.
+    """
+    id: str = field(default_factory=generate_id)
+    title: str = "Nouvelle Quête"
+    description: str = ""
+    steps: List[str] = field(default_factory=list)  # Liste d'objectifs textuels
+    rewards: Dict[str, Any] = field(default_factory=lambda: {"gold": 0, "items": []})
+    is_main_quest: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'QuestModel':
+        return QuestModel(
+            id=data.get("id", generate_id()),
+            title=data.get("title", "Nouvelle Quête"),
+            description=data.get("description", ""),
+            steps=data.get("steps", []),
+            rewards=data.get("rewards", {"gold": 0, "items": []}),
+            is_main_quest=data.get("is_main_quest", False)
+        )
+
+
+@dataclass
 class ProjectModel:
     """
     Le conteneur racine de tout le projet.
@@ -95,6 +153,8 @@ class ProjectModel:
 
     # Données RPG (Variables globales, définitions items/quêtes)
     variables: Dict[str, Any] = field(default_factory=dict)
+    items: Dict[str, ItemModel] = field(default_factory=dict)
+    quests: Dict[str, QuestModel] = field(default_factory=dict)
 
     def add_node(self, node: NodeModel):
         self.nodes[node.id] = node
@@ -128,7 +188,9 @@ class ProjectModel:
                 "edges": [e.to_dict() for e in self.edges]
             },
             "database": {
-                "variables": self.variables
+                "variables": self.variables,
+                "items": [i.to_dict() for i in self.items.values()],
+                "quests": [q.to_dict() for q in self.quests.values()]
             }
         }
 
@@ -160,6 +222,13 @@ class ProjectModel:
         # Database
         db_data = data.get("database", {})
         project.variables = db_data.get("variables", {})
+        
+        for item_dict in db_data.get("items", []):
+            item = ItemModel.from_dict(item_dict)
+            project.items[item.id] = item
+            
+        for quest_dict in db_data.get("quests", []):
+            quest = QuestModel.from_dict(quest_dict)
+            project.quests[quest.id] = quest
 
         return project
-# Modeles de donnees (Dataclasses / Schema JSON)

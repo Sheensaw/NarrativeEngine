@@ -3,7 +3,7 @@ import os
 from PyQt6.QtWidgets import (QMainWindow, QDockWidget, QToolBar,
                              QFileDialog, QMessageBox, QLabel)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction
 
 from src.core.models import ProjectModel, NodeModel
 from src.core.serializer import ProjectSerializer
@@ -11,8 +11,11 @@ from src.core.definitions import NodeType
 from src.editor.graph.scene import NodeScene
 from src.editor.graph.view import NodeGraphView
 from src.editor.panels.inspector import InspectorPanel
-from src.editor.panels.browser import BrowserPanel
+from src.editor.panels.database_panel import DatabasePanel
 
+
+# Import du Browser désactivé pour stabilité
+# from src.editor.panels.browser import BrowserPanel
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -21,7 +24,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Narrative RPG Engine - Editor")
         self.resize(1600, 900)
 
-        # État
         self.project_path = None
 
         # 1. Initialiser la logique centrale (Scène & Vue)
@@ -29,7 +31,7 @@ class MainWindow(QMainWindow):
         self.view = NodeGraphView(self.scene, self)
         self.setCentralWidget(self.view)
 
-        # 2. Initialiser les Panneaux (Docks)
+        # 2. Initialiser les Panneaux (Docks) avec sécurité
         self._init_panels()
 
         # 3. Initialiser la Toolbar et Menus
@@ -43,7 +45,7 @@ class MainWindow(QMainWindow):
 
     def _init_panels(self):
         """Crée et ancre les panneaux latéraux."""
-        # Inspecteur (Droite)
+        # --- Inspecteur (Droite) ---
         self.inspector = InspectorPanel()
         self.dock_inspector = QDockWidget("Inspecteur", self)
         self.dock_inspector.setWidget(self.inspector)
@@ -51,11 +53,13 @@ class MainWindow(QMainWindow):
             Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_inspector)
 
-        # Browser (Bas)
-        self.browser = BrowserPanel(root_path=os.getcwd())
-        self.dock_browser = QDockWidget("Fichiers", self)
-        self.dock_browser.setWidget(self.browser)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.dock_browser)
+        # --- Database (Gauche) ---
+        self.database_panel = DatabasePanel()
+        self.dock_database = QDockWidget("Base de Données", self)
+        self.dock_database.setWidget(self.database_panel)
+        self.dock_database.setAllowedAreas(
+            Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_database)
 
     def _init_actions(self):
         """Barre d'outils supérieure."""
@@ -82,10 +86,37 @@ class MainWindow(QMainWindow):
         act_add_node.triggered.connect(self.add_dialogue_node)
         toolbar.addAction(act_add_node)
 
+        toolbar.addSeparator()
+
+        # Actions Jeu
+        act_play = QAction("▶ Jouer", self)
+        act_play.triggered.connect(self.run_game)
+        toolbar.addAction(act_play)
+
     def on_selection_changed(self):
         """Transmet la sélection de la scène à l'inspecteur."""
         selected = self.scene.selectedItems()
         self.inspector.set_selection(selected)
+
+    def run_game(self):
+        """Lance le joueur avec le projet actuel."""
+        # 1. Sauvegarder d'abord
+        self.save_project()
+        if not self.project_path:
+            return
+
+        # 2. Lancer le processus joueur
+        import subprocess
+        import sys
+        
+        # On utilise l'interpréteur Python actuel
+        python_exe = sys.executable
+        player_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "main_player.py")
+        
+        try:
+            subprocess.Popen([python_exe, player_script, self.project_path])
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Impossible de lancer le jeu :\n{e}")
 
     # --- Gestion Projet ---
 
@@ -97,6 +128,7 @@ class MainWindow(QMainWindow):
         project.add_node(start_node)
 
         self.scene.set_project(project)
+        self.database_panel.set_project(project)
         self.project_path = None
 
     def save_project(self):
@@ -105,7 +137,6 @@ class MainWindow(QMainWindow):
             return
 
         if not self.project_path:
-            # "Save As" behavior
             path, _ = QFileDialog.getSaveFileName(self, "Sauvegarder Projet", "", "JSON Files (*.json)")
             if not path:
                 return
@@ -121,6 +152,7 @@ class MainWindow(QMainWindow):
             project = ProjectSerializer.load_project(path)
             if project:
                 self.scene.set_project(project)
+                self.database_panel.set_project(project)
                 self.project_path = path
                 self.statusBar().showMessage(f"Chargé : {path}", 3000)
 
@@ -129,13 +161,13 @@ class MainWindow(QMainWindow):
         if not self.scene.project:
             return
 
-        # Calculer position centrale (approximative)
-        # Idéalement : mapToScene(view.center)
+        # Ajout avec un léger décalage aléatoire ou centré
+        import random
         new_node = NodeModel(
             title="Nouveau Dialogue",
             type=NodeType.DIALOGUE,
-            pos_x=100,  # Décalage arbitraire pour ne pas empiler
-            pos_y=100
+            pos_x=100 + random.randint(-20, 20),
+            pos_y=100 + random.randint(-20, 20)
         )
         self.scene.project.add_node(new_node)
         self.scene.add_node_item(new_node)

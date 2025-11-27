@@ -1,0 +1,66 @@
+{
+    "metadata": {
+        "name": "Projet RPG Narratif",
+        "version": "1.0.0",
+        "author": "Auteur Anonyme",
+        "created_at": 1764279991.2411308,
+        "last_modified": 1764280054.9021401
+    },
+    "graph": {
+        "nodes": [
+            {
+                "id": "f558f230-b77a-462d-b89f-cecc8efb4faa",
+                "type": "start",
+                "title": "Début",
+                "pos_x": -369.0,
+                "pos_y": -173.0,
+                "content": {
+                    "text": "Bonjour",
+                    "image": null,
+                    "choices": [
+                        {
+                            "text": "Ok",
+                            "target_node_id": "",
+                            "condition": ""
+                        }
+                    ]
+                },
+                "logic": {
+                    "on_enter": [
+                        {
+                            "type": "addItem",
+                            "parameters": {
+                                "item_id": "Sword",
+                                "qty": "1"
+                            }
+                        }
+                    ],
+                    "on_exit": []
+                },
+                "properties": {}
+            },
+            {
+                "id": "232973b8-2a0d-4dfd-9bad-aaefc8994e21",
+                "type": "dialogue",
+                "title": "Nouveau Dialogue",
+                "pos_x": -29.0,
+                "pos_y": -194.0,
+                "content": {
+                    "text": "Nouveau Dialogue",
+                    "image": null
+                },
+                "logic": {
+                    "on_enter": [],
+                    "on_exit": []
+                },
+                "properties": {}
+            }
+        ],
+        "edges": []
+    },
+    "database": {
+        "variables": {},
+        "items": [],
+        "quests": []
+    }
+}

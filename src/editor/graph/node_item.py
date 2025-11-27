@@ -1,6 +1,6 @@
 # src/editor/graph/node_item.py
-from PyQt6.QtWidgets import QGraphicsItem, QGraphicsTextItem, QGraphicsProxyWidget
-from PyQt6.QtCore import QRectF, Qt, QPointF
+from PyQt6.QtWidgets import QGraphicsItem, QGraphicsTextItem
+from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QPen, QBrush, QFont, QPainterPath
 
 from src.core.definitions import NodeType, SocketType, COLORS, NODE_WIDTH, NODE_HEIGHT
@@ -55,9 +55,6 @@ class NodeItem(QGraphicsItem):
 
         # Par défaut, 1 Entrée
         self.add_socket(SocketType.INPUT)
-
-        # Par défaut, 1 Sortie (plus pour les nœuds de dialogue avec choix multiples)
-        # Note: Pour un vrai système dynamique, le nombre de sorties dépendrait des choix
         self.add_socket(SocketType.OUTPUT)
 
     def add_socket(self, socket_type: SocketType):
@@ -88,24 +85,26 @@ class NodeItem(QGraphicsItem):
         return QRectF(0, 0, self.width, self.height)
 
     def paint(self, painter, option, widget=None):
-        """Dessine le nœud (Fond, Header, Bordure)."""
-
-        # 1. Corps (Body)
+        """Dessine le nœud."""
+        # 1. Corps (Body) - Fond général
         path_body = QPainterPath()
         path_body.addRoundedRect(0, 0, self.width, self.height, self.radius, self.radius)
         painter.setBrush(QBrush(self.bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path_body)
 
-        # 2. En-tête (Header)
+        # 2. En-tête (Header) - CRASH FIX : Suppression de simplified()
+        # On dessine le header manuellement pour éviter les calculs booléens lourds qui font crasher Qt
         path_header = QPainterPath()
         path_header.setFillRule(Qt.FillRule.WindingFill)
+
+        # Partie haute arrondie
         path_header.addRoundedRect(0, 0, self.width, 30, self.radius, self.radius)
-        # Astuce: On redessine le bas du header en rectangle pour "effacer" l'arrondi du bas
+        # Partie basse rectangulaire pour "couper" l'arrondi du bas
         path_header.addRect(0, 20, self.width, 10)
 
         painter.setBrush(QBrush(self.header_color))
-        painter.drawPath(path_header.simplified())  # simplified fusionne le rect et le rounded
+        painter.drawPath(path_header)  # Dessin direct sans simplification
 
         # 3. Bordure (Sélection)
         if self.isSelected():

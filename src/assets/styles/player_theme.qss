@@ -1,0 +1,98 @@
+/* Global Reset */
+QWidget {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: "Underdog", "Segoe UI", sans-serif;
+    font-size: 16px;
+}
+
+/* Top Bar */
+QFrame#TopBar {
+    background-color: #000000;
+    border-bottom: 1px solid #333333;
+    min-height: 60px;
+}
+
+/* Stat Labels in Top Bar */
+QLabel.stat-label {
+    background-color: transparent;
+    padding: 0 5px;
+}
+
+QLabel.stat-value {
+    font-weight: bold;
+    font-size: 16px;
+    color: #ffffff;
+    margin-right: 20px;
+    background-color: transparent;
+}
+
+/* Menu Buttons in Top Bar */
+QPushButton.menu-btn {
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 8px 15px;
+    font-weight: bold;
+    margin-left: 5px;
+    font-family: "Underdog";
+}
+
+QPushButton.menu-btn:hover {
+    background-color: #333333;
+    border-color: #666;
+}
+
+QPushButton.menu-btn:pressed {
+    background-color: #000000;
+}
+
+/* Story Area */
+QTextEdit#StoryText {
+    background-color: #000000;
+    border: none;
+    padding: 40px;
+    font-size: 20px;
+    line-height: 1.6;
+    color: #ffffff;
+    font-family: "Underdog";
+}
+
+/* Choice Buttons */
+QPushButton.choice-btn {
+    background-color: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #ffffff;
+    padding: 15px;
+    text-align: left;
+    font-size: 18px;
+    margin-bottom: 10px;
+    font-family: "Underdog";
+}
+
+QPushButton.choice-btn:hover {
+    background-color: #333333;
+    border-color: #ffffff;
+}
+
+/* Dialogs */
+QDialog {
+    background-color: #000000;
+    border: 1px solid #444;
+}
+
+QListWidget {
+    background-color: #000000;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+    color: #ffffff;
+    font-family: "Underdog";
+}
+
+QLabel {
+    color: #ffffff;
+    font-family: "Underdog";
+}

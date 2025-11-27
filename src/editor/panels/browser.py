@@ -1,6 +1,8 @@
 # src/editor/panels/browser.py
 import os
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeView, QFileSystemModel, QLabel
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeView, QLabel
+from PyQt6.QtGui import QFileSystemModel
+from PyQt6.QtCore import QDir
 
 
 class BrowserPanel(QWidget):
@@ -20,19 +22,27 @@ class BrowserPanel(QWidget):
         self.lbl_header.setStyleSheet("padding: 5px; font-weight: bold;")
         self.layout.addWidget(self.lbl_header)
 
+        # Vue Arborescente (Création avant le modèle pour stabilité)
+        self.tree = QTreeView()
+
         # Modèle de fichier système
+        # CRITIQUE : Utilisation de QDir pour les filtres et parenté explicite
         self.model = QFileSystemModel()
+        self.model.setParent(self)
+        self.model.setFilter(QDir.Filter.AllEntries | QDir.Filter.NoDotAndDotDot | QDir.Filter.AllDirs)
+
+        # Démarrage du scan
         self.model.setRootPath(self.root_path)
 
-        # Vue Arborescente
-        self.tree = QTreeView()
+        # Liaison Vue-Modèle
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(self.root_path))
 
-        # Masquer les colonnes inutiles (Taille, Type, Date)
+        # Configuration Vue
         self.tree.setColumnHidden(1, True)
         self.tree.setColumnHidden(2, True)
         self.tree.setColumnHidden(3, True)
         self.tree.setHeaderHidden(True)
+        self.tree.setAnimated(False)  # Optimisation perf
 
         self.layout.addWidget(self.tree)

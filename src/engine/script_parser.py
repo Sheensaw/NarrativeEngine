@@ -53,29 +53,139 @@ class ScriptParser:
             print(f"[ScriptParser] Erreur d'évaluation '{condition}': {e}")
             return False
 
-    def execute_script(self, script_list: list):
+    def execute_script(self, script_lines: list):
         """
-        Exécute une liste d'actions définies dans le nœud (on_enter/on_exit).
-        Format attendu : [{"command": "set", "var": "gold", "value": 10}, ...]
+        Exécute une liste de commandes (lignes de texte).
+        Supporte les macros Twine-like : <<command arg1 arg2>>
         """
-        for action in script_list:
-            cmd = action.get("command")
+        if not script_lines:
+            return
 
-            if cmd == "set":
-                # Assigner une valeur brute
-                self.store.set_var(action["var"], action["value"])
+        for line in script_lines:
+            if not line or not isinstance(line, str):
+                continue
+            
+            line = line.strip()
+            if not line.startswith("<<") or not line.endswith(">>"):
+                continue
 
-            elif cmd == "add":
-                # Additionner (numérique)
-                current = self.store.get_var(action["var"], 0)
-                self.store.set_var(action["var"], current + action["value"])
+            # Extraction du contenu : <<addItem "Sword" 1>> -> addItem "Sword" 1
+            content = line[2:-2].strip()
+            
+            # Parsing basique (séparation par espaces, en respectant les guillemets)
+            # Regex pour capturer : mot ou "chaine avec espaces"
+            parts = [p.strip('"') for p in re.findall(r'(?:[^\s"]+|"[^"]*")+', content)]
+            
+            if not parts:
+                continue
 
-            elif cmd == "sub":
-                # Soustraire
-                current = self.store.get_var(action["var"], 0)
-                self.store.set_var(action["var"], current - action["value"])
+            command = parts[0]
+            args = parts[1:]
 
-            elif cmd == "toggle":
-                # Inverser un booléen
-                current = bool(self.store.get_var(action["var"], False))
-                self.store.set_var(action["var"], not current)
+            self._dispatch_command(command, args)
+
+    def _dispatch_command(self, command: str, args: list):
+        """Dispatche la commande vers la bonne action."""
+        try:
+            if command == "setVariable":
+                if len(args) >= 2:
+                    var_name = args[0]
+                    value = self._parse_value(args[1])
+                    self.store.set_var(var_name, value)
+            
+            elif command == "addItem":
+                if len(args) >= 1:
+                    item_id = args[0]
+                    qty = int(args[1]) if len(args) > 1 else 1
+                    self.store.add_item(item_id, qty)
+
+            elif command == "removeItem":
+                if len(args) >= 1:
+                    item_id = args[0]
+                    qty = int(args[1]) if len(args) > 1 else 1
+                    self.store.remove_item(item_id, qty)
+
+            elif command == "startQuest":
+                if len(args) >= 1:
+                    quest_id = args[0]
+                    self.store.start_quest(quest_id)
+
+            elif command == "completeQuest":
+                if len(args) >= 1:
+                    quest_id = args[0]
+                    self.store.complete_quest(quest_id)
+            
+            else:
+                print(f"[ScriptParser] Commande inconnue : {command}")
+
+        except Exception as e:
+            print(f"[ScriptParser] Erreur exécution '{command}': {e}")
+
+    def execute_events(self, events: list):
+        """
+        Exécute une liste d'événements structurés.
+        Format: [{'type': 'addItem', 'parameters': {'item_id': 'sword', 'qty': 1}}, ...]
+        """
+        if not events:
+            return
+
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            
+            ev_type = event.get("type")
+            params = event.get("parameters", {})
+            
+            self._dispatch_event(ev_type, params)
+
+    def _dispatch_event(self, ev_type: str, params: dict):
+        """Dispatche l'événement vers la bonne action."""
+        try:
+            if ev_type == "setVariable":
+                name = params.get("name")
+                value = params.get("value")
+                if name:
+                    # Tentative de conversion de type si c'est une string
+                    if isinstance(value, str):
+                        value = self._parse_value(value)
+                    self.store.set_var(name, value)
+
+            elif ev_type == "addItem":
+                item_id = params.get("item_id")
+                qty = int(params.get("qty", 1))
+                if item_id:
+                    self.store.add_item(item_id, qty)
+
+            elif ev_type == "removeItem":
+                item_id = params.get("item_id")
+                qty = int(params.get("qty", 1))
+                if item_id:
+                    self.store.remove_item(item_id, qty)
+
+            elif ev_type == "startQuest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.start_quest(quest_id)
+
+            elif ev_type == "completeQuest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.complete_quest(quest_id)
+            
+            else:
+                print(f"[ScriptParser] Event inconnu : {ev_type}")
+
+        except Exception as e:
+            print(f"[ScriptParser] Erreur exécution event '{ev_type}': {e}")
+
+    def _parse_value(self, val_str: str) -> Any:
+        """Convertit une string en int/float/bool si possible."""
+        if val_str.lower() == "true": return True
+        if val_str.lower() == "false": return False
+        try:
+            return int(val_str)
+        except ValueError:
+            try:
+                return float(val_str)
+            except ValueError:
+                return val_str
