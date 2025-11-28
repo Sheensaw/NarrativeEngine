@@ -1,6 +1,6 @@
 # src/engine/script_parser.py
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List
 from src.engine.variable_store import VariableStore
 
 
@@ -84,8 +84,23 @@ class ScriptParser:
 
             self._dispatch_command(command, args)
 
+    def execute_events(self, events: List[Dict]):
+        """Exécute une liste d'événements structurés."""
+        if not events:
+            return
+
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            
+            ev_type = event.get("type")
+            params = event.get("parameters", {})
+            
+            if ev_type:
+                self._dispatch_event(ev_type, params)
+
     def _dispatch_command(self, command: str, args: list):
-        """Dispatche la commande vers la bonne action."""
+        """Dispatche la commande textuelle vers la bonne action."""
         try:
             if command == "setVariable":
                 if len(args) >= 2:
@@ -109,79 +124,79 @@ class ScriptParser:
                 if len(args) >= 1:
                     quest_id = args[0]
                     self.store.start_quest(quest_id)
-
+                    
             elif command == "completeQuest":
                 if len(args) >= 1:
                     quest_id = args[0]
                     self.store.complete_quest(quest_id)
-            
+                    
             else:
                 print(f"[ScriptParser] Commande inconnue : {command}")
 
         except Exception as e:
-            print(f"[ScriptParser] Erreur exécution '{command}': {e}")
-
-    def execute_events(self, events: list):
-        """
-        Exécute une liste d'événements structurés.
-        Format: [{'type': 'addItem', 'parameters': {'item_id': 'sword', 'qty': 1}}, ...]
-        """
-        if not events:
-            return
-
-        for event in events:
-            if not isinstance(event, dict):
-                continue
-            
-            ev_type = event.get("type")
-            params = event.get("parameters", {})
-            
-            self._dispatch_event(ev_type, params)
+            print(f"[ScriptParser] Erreur exécution commande '{command}': {e}")
 
     def _dispatch_event(self, ev_type: str, params: dict):
-        """Dispatche l'événement vers la bonne action."""
+        """Dispatche l'événement structuré vers la bonne action."""
         try:
-            if ev_type == "setVariable":
-                name = params.get("name")
-                value = params.get("value")
-                if name:
-                    # Tentative de conversion de type si c'est une string
-                    if isinstance(value, str):
-                        value = self._parse_value(value)
-                    self.store.set_var(name, value)
-
+            print(f"[ScriptParser] Dispatching event: {ev_type} with params: {params}")
+            
+            if ev_type == "set":
+                var = params.get("variable")
+                val = params.get("value")
+                if var:
+                    self.store.set_var(var, val)
+                    
             elif ev_type == "addItem":
-                item_id = params.get("item_id")
-                qty = int(params.get("qty", 1))
-                if item_id:
-                    self.store.add_item(item_id, qty)
-
-            elif ev_type == "removeItem":
-                item_id = params.get("item_id")
-                qty = int(params.get("qty", 1))
-                if item_id:
-                    self.store.remove_item(item_id, qty)
-
-            elif ev_type == "startQuest":
-                quest_id = params.get("quest_id")
-                if quest_id:
-                    self.store.start_quest(quest_id)
-
-            elif ev_type == "completeQuest":
-                quest_id = params.get("quest_id")
-                if quest_id:
-                    self.store.complete_quest(quest_id)
+                item = params.get("item_id")
+                # Check 'quantity' then 'qty', default to 1
+                raw_qty = params.get("quantity") or params.get("qty") or 1
+                try:
+                    qty = int(raw_qty)
+                except:
+                    qty = 1
+                    
+                if item:
+                    self.store.add_item(item, qty)
+            
+            elif ev_type == "spawn":
+                pnj_id = params.get("pnjId")
+                x = params.get("x")
+                y = params.get("y")
+                print(f"[ScriptParser] Spawning NPC {pnj_id} at ({x}, {y})")
+                
+            elif ev_type == "movePnj":
+                pnj_id = params.get("pnjId")
+                target = params.get("targetPassage")
+                x = params.get("x")
+                y = params.get("y")
+                print(f"[ScriptParser] Moving NPC {pnj_id} to {target} at ({x}, {y})")
+                
+            elif ev_type == "setrelation":
+                pnj_id = params.get("pnjId")
+                val = params.get("value")
+                print(f"[ScriptParser] Setting relation for {pnj_id} to {val}")
+                
+            elif ev_type == "changemood":
+                pnj_id = params.get("pnjId")
+                val = params.get("value")
+                print(f"[ScriptParser] Changing mood for {pnj_id} to {val}")
+                
+            # Add other NPC macros here as needed
             
             else:
-                print(f"[ScriptParser] Event inconnu : {ev_type}")
-
+                print(f"[ScriptParser] Event inconnu ou non implémenté : {ev_type}")
+                
         except Exception as e:
             print(f"[ScriptParser] Erreur exécution event '{ev_type}': {e}")
 
     def _parse_value(self, val_str: str) -> Any:
-        """Convertit une string en int/float/bool si possible."""
-        if val_str.lower() == "true": return True
-        if val_str.lower() == "false": return False
+        """Tente de convertir une string en int/float/bool, sinon garde string."""
+        if val_str.lower() == "true":
+            return True
+        if val_str.lower() == "false":
+            return False
+        
         try:
             return int(val_str)
         except ValueError:

@@ -1,38 +1,57 @@
+# main_player.py
 import sys
 import os
 import json
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QTextEdit, QPushButton, QLabel, 
-                             QListWidget, QGroupBox, QFileDialog, QMessageBox, QFrame, QScrollArea, QDialog)
+                             QFileDialog, QMessageBox, QFrame, QScrollArea, QGraphicsOpacityEffect)
 from PyQt6.QtGui import QFontDatabase, QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
 
-from src.core.models import ProjectModel
+from src.core.models import ProjectModel, ItemModel
 from src.core.serializer import ProjectSerializer
 from src.engine.story_manager import StoryManager
+from src.core.database import DatabaseManager
+from src.ui.sliding_menu import SlidingMenu
+from src.ui.animated_widgets import FadeTextEdit, HoverButton
 
 class PlayerWindow(QMainWindow):
-    def __init__(self, project_path=None):
+    def __init__(self, project_file=None):
         super().__init__()
-        self.setWindowTitle("Narrative Engine - Player")
-        self.resize(1280, 800)
-
-        # Load Stylesheet
+        self.setWindowTitle("Narrative Player")
+        self.resize(1280, 720)
+        
+        # 1. Load Stylesheet
         self._load_stylesheet()
-
-        # Load Font
         self._load_font()
 
+        # 2. Managers
+        self.db_manager = DatabaseManager()
         self.story_manager = StoryManager()
+        
+        # Connect signals
         self.story_manager.variables.add_observer(self.on_variable_changed)
 
+        # 3. UI Setup
         self._init_ui()
+        
+        # 4. Sliding Menu (Overlay)
+        self.sliding_menu = SlidingMenu(self, self.story_manager)
+        self.sliding_menu.hide()
 
-        if project_path:
-            self.load_project(project_path)
+        # 5. Load Project if provided
+        if project_file:
+            self.load_project(project_file)
         else:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(100, self.open_project_dialog)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Keep menu on the right side, full height
+        if hasattr(self, 'sliding_menu'):
+            menu_width = 400
+            self.sliding_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
 
     def _load_stylesheet(self):
         try:
@@ -42,6 +61,16 @@ class PlayerWindow(QMainWindow):
                     self.setStyleSheet(f.read())
         except Exception as e:
             print(f"Erreur chargement style: {e}")
+        self.setStyleSheet("""
+            QMainWindow { background-color: #121212; color: #ffffff; font-family: 'Underdog', 'Segoe UI', sans-serif; }
+            QTextEdit { background-color: transparent; border: none; font-size: 20px; line-height: 1.6; color: #ffffff; padding: 20px; }
+            QPushButton { background-color: #2a2a2a; border: 1px solid #444; color: #eee; padding: 10px 20px; border-radius: 4px; font-size: 16px; font-family: 'Underdog'; }
+            QPushButton:hover { background-color: #3a3a3a; border-color: #666; }
+            QPushButton:pressed { background-color: #222; }
+            QPushButton.choice-btn { text-align: left; font-size: 18px; margin: 5px 0; padding: 15px; border-left: 3px solid #555; }
+            QPushButton.choice-btn:hover { border-left-color: #c42b1c; background-color: #1e1e1e; padding-left: 25px; }
+            QLabel { color: #ffffff; font-family: 'Underdog'; font-size: 16px; }
+        """)
 
     def _load_font(self):
         try:
@@ -52,6 +81,8 @@ class PlayerWindow(QMainWindow):
                     print("Erreur chargement font Underdog")
                 else:
                     print("Font Underdog chargée")
+            else:
+                print(f"Font not found at {font_path}")
         except Exception as e:
             print(f"Erreur font: {e}")
 
@@ -67,73 +98,114 @@ class PlayerWindow(QMainWindow):
         # --- TOP BAR ---
         self.top_bar = QFrame()
         self.top_bar.setObjectName("TopBar")
-        self.top_bar.setFixedHeight(70)
+        self.top_bar.setFixedHeight(60)
+        self.top_bar.setStyleSheet("background-color: #1a1a1a; border-bottom: 1px solid #333;")
         top_layout = QHBoxLayout(self.top_bar)
         top_layout.setContentsMargins(20, 0, 20, 0)
-        top_layout.setSpacing(15)
-
-        # Assets Path
+        
+        # --- HUD Elements (Native Widgets) ---
         assets_dir = os.path.join(os.path.dirname(__file__), "src", "assets", "icons")
 
-        # Helper to create stat labels with icons
-        def add_stat(icon_name, name, obj_name):
+        # Stats Group
+        stats_layout = QHBoxLayout()
+        stats_layout.setSpacing(20)
+        
+        self.stat_labels = {}
+
+        def add_stat(name, icon, initial_value):
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(5)
+            
             # Icon
             lbl_icon = QLabel()
-            icon_path = os.path.join(assets_dir, icon_name)
+            icon_path = os.path.join(assets_dir, icon)
             if os.path.exists(icon_path):
                 pixmap = QPixmap(icon_path)
-                lbl_icon.setPixmap(pixmap.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            else:
-                lbl_icon.setText(name[:1]) # Fallback text
-            
-            lbl_icon.setProperty("class", "stat-label")
+                # No resizing to ensure perfect sharpness (16x16 native)
+                lbl_icon.setPixmap(pixmap)
+            layout.addWidget(lbl_icon)
             
             # Value
-            lbl_val = QLabel("0")
-            lbl_val.setProperty("class", "stat-value")
-            lbl_val.setObjectName(obj_name)
+            lbl_val = QLabel(str(initial_value))
+            layout.addWidget(lbl_val)
             
-            top_layout.addWidget(lbl_icon)
-            top_layout.addWidget(lbl_val)
-            return lbl_val
+            stats_layout.addWidget(container)
+            self.stat_labels[name] = lbl_val
 
-        # Using defense.png as placeholder for strength/resistance if needed
-        self.lbl_health = add_stat("health.png", "Health", "StatHealth")
-        self.lbl_str = add_stat("defense.png", "Strength", "StatStrength") # Placeholder
-        self.lbl_dex = add_stat("dexterity.png", "Dexterity", "StatDexterity")
-        self.lbl_res = add_stat("defense.png", "Resistance", "StatResistance")
-        self.lbl_gold = add_stat("gold.png", "Gold", "StatGold")
+        # Health
+        add_stat("health", "health.png", "100")
 
+        # Gold
+        add_stat("gold", "gold.png", "0")
+
+        # Attributes
+        add_stat("strength", "strength.png", "10")
+        add_stat("dexterity", "dexterity.png", "10")
+        add_stat("resistance", "defense.png", "0")
+
+        top_layout.addLayout(stats_layout)
         top_layout.addStretch()
 
-        # Helper for Menu Buttons with Icons
-        def add_menu_btn(text, icon_name, callback):
-            btn = QPushButton(text)
-            btn.setProperty("class", "menu-btn")
+        # Buttons with Icons
+        def create_hud_btn(tooltip, icon_name, callback):
+            btn = QPushButton()
+            btn.setToolTip(tooltip)
+            btn.setObjectName("HUDButton")
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            
+            # Styling for icon-only button
+            btn.setFixedSize(40, 40)
+            btn.setStyleSheet("""
+                QPushButton#HUDButton {
+                    background-color: transparent;
+                    border: 1px solid transparent;
+                    border-radius: 5px;
+                }
+                QPushButton#HUDButton:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                }
+                QPushButton#HUDButton:pressed {
+                    background-color: rgba(255, 255, 255, 0.2);
+                }
+            """)
+
             icon_path = os.path.join(assets_dir, icon_name)
             if os.path.exists(icon_path):
                 btn.setIcon(QIcon(icon_path))
-                btn.setIconSize(QSize(20, 20))
+                btn.setIconSize(QSize(28, 28)) # Slightly larger icon
+            
             btn.clicked.connect(callback)
-            top_layout.addWidget(btn)
+            return btn
 
-        add_menu_btn("Inventaire", "inventory.png", self.open_inventory)
-        add_menu_btn("Équipement", "equipment.png", self.open_equipment)
-        add_menu_btn("Compagnons", "buddy.png", self.open_companions)
+        btn_inv = create_hud_btn("Inventaire", "inventory.png", lambda: self.toggle_menu(0))
+        top_layout.addWidget(btn_inv)
+
+        btn_equip = create_hud_btn("Équipement", "equipment.png", lambda: self.toggle_menu(1))
+        top_layout.addWidget(btn_equip)
+
+        btn_comp = create_hud_btn("Compagnons", "buddy.png", lambda: self.toggle_menu(2))
+        top_layout.addWidget(btn_comp)
 
         main_layout.addWidget(self.top_bar)
 
         # --- MAIN CONTENT AREA ---
         self.main_area = QWidget()
+        self.main_area.setObjectName("MainArea")
+        main_layout.addWidget(self.main_area)
+
         content_layout = QVBoxLayout(self.main_area)
         content_layout.setContentsMargins(150, 50, 150, 50) # Centered reading experience
         content_layout.setSpacing(30)
 
         # Story Text
-        self.txt_story = QTextEdit()
+        self.txt_story = FadeTextEdit()
         self.txt_story.setObjectName("StoryText")
         self.txt_story.setReadOnly(True)
         self.txt_story.setFrameShape(QFrame.Shape.NoFrame)
+        self.txt_story.finished.connect(self.show_choices_sequentially)
         content_layout.addWidget(self.txt_story, 4)
 
         # Choices
@@ -151,32 +223,26 @@ class PlayerWindow(QMainWindow):
         self.scroll_choices.setWidget(self.choices_container)
         content_layout.addWidget(self.scroll_choices, 2)
 
-        main_layout.addWidget(self.main_area)
-
-    def open_inventory(self):
-        # Retrieve inventory from variables
-        inv = self.story_manager.variables.get_var("inventory", {})
+    def on_variable_changed(self, name, value):
+        """Met à jour l'interface quand une variable change."""
+        if name in self.stat_labels:
+            self.stat_labels[name].setText(str(value))
+        elif name == "max_health":
+             pass
         
-        # Create display dict
-        display_inv = {}
-        for item_id, qty in inv.items():
-            name = item_id
-            if self.story_manager.project and item_id in self.story_manager.project.items:
-                name = self.story_manager.project.items[item_id].name
-            display_inv[name] = qty
+        # Refresh menu if open
+        if hasattr(self, 'sliding_menu') and self.sliding_menu.isVisible():
+            self.sliding_menu.refresh_current_view()
 
-        dialog = InventoryDialog(self, display_inv)
-        dialog.exec()
-
-    def open_equipment(self):
-        equipped = self.story_manager.variables.get_var("equipped", {})
-        dialog = EquipmentDialog(self, equipped)
-        dialog.exec()
-
-    def open_companions(self):
-        companions = self.story_manager.variables.get_var("companions", [])
-        dialog = CompanionsDialog(self, companions)
-        dialog.exec()
+    def toggle_menu(self, tab_index):
+        if self.sliding_menu.isVisible():
+            # If already visible and same tab, hide. If different tab, switch.
+            if self.sliding_menu.stack.currentIndex() == tab_index:
+                self.sliding_menu.hide_menu()
+            else:
+                self.sliding_menu.switch_tab(tab_index)
+        else:
+            self.sliding_menu.show_menu(tab_index)
 
     def open_project_dialog(self):
         path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un projet", "", "JSON Files (*.json)")
@@ -191,6 +257,18 @@ class PlayerWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", "Impossible de charger le projet.")
             return
 
+        # LOAD DB ITEMS
+        db_items = self.db_manager.get_all_items()
+        for item_data in db_items.values():
+            item = ItemModel(
+                id=item_data["id"],
+                name=item_data["name"],
+                type=item_data["type"],
+                description=item_data["description"],
+                properties=item_data["data"]
+            )
+            project.items[item.id] = item
+
         self.story_manager.load_project(project)
         self.story_manager.start_game()
         self.refresh_ui()
@@ -198,10 +276,9 @@ class PlayerWindow(QMainWindow):
     def refresh_ui(self):
         # 1. Update Text
         text = self.story_manager.get_parsed_text()
-        self.txt_story.setMarkdown(text)
+        self.txt_story.show_text(text)
 
         # 2. Update Choices
-        # Clear previous buttons
         while self.layout_choices.count():
             child = self.layout_choices.takeAt(0)
             if child.widget():
@@ -214,104 +291,80 @@ class PlayerWindow(QMainWindow):
              self.layout_choices.addWidget(lbl)
         
         for i, choice in enumerate(choices):
-            btn = QPushButton(choice["text"])
+            btn = HoverButton(choice["text"])
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("class", "choice-btn")
             btn.clicked.connect(lambda checked, idx=i: self.make_choice(idx))
+            
+            # Hide initially
+            opacity = QGraphicsOpacityEffect(btn)
+            opacity.setOpacity(0.0)
+            btn.setGraphicsEffect(opacity)
+            btn.setVisible(False) # Also hide to prevent clicks? No, opacity 0 is enough visually, but setVisible False is safer.
+            # Actually, if we setVisible(False), layout might collapse. 
+            # Better to use Opacity 0 and maybe disable?
+            # Let's use Opacity 0 and setEnabled(False)
+            btn.setEnabled(False)
+            
             self.layout_choices.addWidget(btn)
 
         self.layout_choices.addStretch()
+
+    def show_choices_sequentially(self):
+        """Reveals choices one by one with fade in."""
+        # Get all buttons
+        buttons = []
+        for i in range(self.layout_choices.count()):
+            item = self.layout_choices.itemAt(i)
+            if item.widget() and isinstance(item.widget(), QPushButton):
+                buttons.append(item.widget())
+        
+        if not buttons:
+            return
+
+        self.current_choice_index = 0
+        self.choice_buttons = buttons
+        
+        # Timer for sequential reveal
+        self.choice_timer = QTimer(self)
+        self.choice_timer.timeout.connect(self._reveal_next_choice)
+        self.choice_timer.start(200) # 200ms between choices
+
+    def _reveal_next_choice(self):
+        if self.current_choice_index < len(self.choice_buttons):
+            btn = self.choice_buttons[self.current_choice_index]
+            btn.setEnabled(True)
+            btn.setVisible(True) # If we hid it
+            
+            # Fade In
+            effect = btn.graphicsEffect()
+            if effect:
+                anim = QPropertyAnimation(effect, b"opacity", btn)
+                anim.setDuration(300)
+                anim.setStartValue(0.0)
+                anim.setEndValue(1.0)
+                anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+                anim.start()
+            
+            self.current_choice_index += 1
+        else:
+            self.choice_timer.stop()
 
     def make_choice(self, index):
         self.story_manager.make_choice(index)
         self.refresh_ui()
 
-    def on_variable_changed(self, name, value):
-        self.update_hud()
-
     def update_hud(self):
         vars = self.story_manager.variables.get_all()
-        
-        # Update Stats
-        self.lbl_health.setText(f"{vars.get('health', 0)}/{vars.get('max_health', 10)}")
-        self.lbl_str.setText(str(vars.get('strength', 0)))
-        self.lbl_dex.setText(str(vars.get('dexterity', 0)))
-        self.lbl_res.setText(str(vars.get('resistance', 0)))
-        self.lbl_gold.setText(str(vars.get('gold', 0)))
+        # Initial update
+        for name, val in vars.items():
+            if name in self.stat_labels:
+                self.stat_labels[name].setText(str(val))
 
 
-class InventoryDialog(QDialog):
-    def __init__(self, parent=None, items=None):
-        super().__init__(parent)
-        self.setWindowTitle("Inventaire")
-        self.resize(400, 500)
-        self.layout = QVBoxLayout(self)
-        
-        self.list_widget = QListWidget()
-        self.layout.addWidget(self.list_widget)
-        
-        btn_close = QPushButton("Fermer")
-        btn_close.clicked.connect(self.accept)
-        self.layout.addWidget(btn_close)
-        
-        self.load_items(items or {})
-
-    def load_items(self, items):
-        self.list_widget.clear()
-        if not items:
-            self.list_widget.addItem("Inventaire vide.")
-            return
-
-        for item_name, qty in items.items():
-            self.list_widget.addItem(f"{item_name} (x{qty})")
-
-
-class EquipmentDialog(QDialog):
-    def __init__(self, parent=None, equipped=None):
-        super().__init__(parent)
-        self.setWindowTitle("Équipement")
-        self.resize(400, 500)
-        layout = QVBoxLayout(self)
-        
-        self.list_widget = QListWidget()
-        layout.addWidget(self.list_widget)
-        
-        if equipped:
-            for slot, item in equipped.items():
-                self.list_widget.addItem(f"{slot}: {item}")
-        else:
-            self.list_widget.addItem("Aucun équipement.")
-            
-        btn_close = QPushButton("Fermer")
-        btn_close.clicked.connect(self.accept)
-        layout.addWidget(btn_close)
-
-
-class CompanionsDialog(QDialog):
-    def __init__(self, parent=None, companions=None):
-        super().__init__(parent)
-        self.setWindowTitle("Compagnons")
-        self.resize(400, 500)
-        layout = QVBoxLayout(self)
-        
-        self.list_widget = QListWidget()
-        layout.addWidget(self.list_widget)
-        
-        if companions:
-            for npc in companions:
-                self.list_widget.addItem(f"👤 {npc}")
-        else:
-            self.list_widget.addItem("Aucun compagnon.")
-            
-        btn_close = QPushButton("Fermer")
-        btn_close.clicked.connect(self.accept)
-        layout.addWidget(btn_close)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = QApplication(sys.argv)
-    
-    # Check args for project path
+
     project_file = None
     if len(sys.argv) > 1:
         project_file = sys.argv[1]

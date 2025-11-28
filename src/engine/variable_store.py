@@ -3,35 +3,37 @@ from typing import Any, Dict, Callable, List
 
 
 class VariableStore:
-    """
-    Gère l'état global du jeu (variables, inventaire, quêtes).
-    Implémente le pattern Observer pour notifier l'UI des changements.
-    """
+    """Gère l'état global des variables du jeu (stats, inventaire, quêtes...)."""
 
     def __init__(self):
-        # Stockage principal des variables {nom: valeur}
+        self._observers: List[Callable[[str, Any], None]] = []
         self._variables: Dict[str, Any] = {
-            "health": 10,
-            "max_health": 10,
-            "strength": 0,
-            "dexterity": 0,
+            "health": 100,
+            "max_health": 100,
+            "strength": 10,
+            "dexterity": 10,
             "resistance": 0,
             "gold": 0,
-            "inventory": {},      # {item_id: qty}
-            "equipped": {},       # {slot: item_id}
-            "companions": [],     # [npc_id]
-            "active_quests": [],  # [quest_id]
+            "inventory": {},
+            "equipped": {},
+            "companions": [],
+            "used_choices": [], # List of choice IDs
+            "active_quests": [],
             "completed_quests": []
         }
-
-        # Liste des fonctions à appeler quand une variable change
-        # Signature: callback(var_name: str, new_value: Any)
-        self._observers: List[Callable[[str, Any], None]] = []
-
 
     def load_state(self, variables: Dict[str, Any]):
         """Charge un état complet (ex: chargement de sauvegarde ou init projet)."""
         self._variables = variables.copy()
+        
+        # Sanitize types
+        if not isinstance(self._variables.get("inventory"), dict):
+            self._variables["inventory"] = {}
+        if not isinstance(self._variables.get("equipped"), dict):
+            self._variables["equipped"] = {}
+        if not isinstance(self._variables.get("used_choices"), list):
+            self._variables["used_choices"] = []
+            
         # On notifie tout le monde du rechargement complet
         self.notify_all()
 
@@ -72,7 +74,13 @@ class VariableStore:
 
     def add_item(self, item_id: str, qty: int = 1):
         """Ajoute un item à l'inventaire (variable 'inventory')."""
+        # IMPORTANT: .copy() pour créer une nouvelle référence et déclencher le notify
         inv = self.get_var("inventory", {})
+        if not isinstance(inv, dict):
+            inv = {}
+        else:
+            inv = inv.copy()
+
         if item_id in inv:
             inv[item_id] += qty
         else:
@@ -83,6 +91,11 @@ class VariableStore:
     def remove_item(self, item_id: str, qty: int = 1):
         """Retire un item."""
         inv = self.get_var("inventory", {})
+        if not isinstance(inv, dict):
+            inv = {}
+        else:
+            inv = inv.copy()
+
         if item_id in inv:
             inv[item_id] = max(0, inv[item_id] - qty)
             if inv[item_id] == 0:
@@ -91,10 +104,10 @@ class VariableStore:
 
     def start_quest(self, quest_id: str):
         """Démarre une quête."""
-        quests = self.get_var("active_quests", [])
-        if quest_id not in quests:
-            quests.append(quest_id)
-            self.set_var("active_quests", quests)
+        active = self.get_var("active_quests", [])
+        if quest_id not in active:
+            active.append(quest_id)
+            self.set_var("active_quests", active)
             print(f"[Jeu] Quête démarrée : {quest_id}")
 
     def complete_quest(self, quest_id: str):
@@ -110,3 +123,47 @@ class VariableStore:
             completed.append(quest_id)
             self.set_var("completed_quests", completed)
             print(f"[Jeu] Quête terminée : {quest_id}")
+
+    def equip_item(self, item_id: str, slot: str):
+        """Équipe un item dans un slot donné."""
+        # 1. Get current state
+        equipped = self.get_var("equipped", {})
+        if not isinstance(equipped, dict): equipped = {}
+        else: equipped = equipped.copy()
+        
+        # 2. Check if slot is occupied
+        if slot in equipped:
+            # We just replace it. The old item stays in inventory (it never left).
+            pass
+            
+        # 3. Equip new item
+        equipped[slot] = item_id
+        self.set_var("equipped", equipped)
+        print(f"[Jeu] Item équipé : {item_id} sur {slot}")
+
+    def unequip_item(self, slot: str):
+        """Déséquipe un item d'un slot."""
+        equipped = self.get_var("equipped", {})
+        if not isinstance(equipped, dict): equipped = {}
+        else: equipped = equipped.copy()
+        
+        if slot in equipped:
+            del equipped[slot]
+            self.set_var("equipped", equipped)
+            print(f"[Jeu] Item déséquipé du slot {slot}")
+
+    def mark_choice_used(self, choice_id: str):
+        """Marque un choix comme utilisé."""
+        used = self.get_var("used_choices", [])
+        if not isinstance(used, list): used = []
+        else: used = list(used) # Copy
+        
+        if choice_id not in used:
+            used.append(choice_id)
+            self.set_var("used_choices", used)
+
+    def is_choice_used(self, choice_id: str) -> bool:
+        """Vérifie si un choix a déjà été utilisé."""
+        used = self.get_var("used_choices", [])
+        if not isinstance(used, list): return False
+        return choice_id in used

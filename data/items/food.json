@@ -1,0 +1,29 @@
+[
+    {
+        "id": "pomme_rouge",
+        "name": "Pomme Rouge",
+        "type": "food",
+        "description": "Un fruit juteux et croquant, cueilli dans les vergers royaux. Apaise la faim et redonne un peu de vigueur.",
+        "bonus": {
+            "health": 5
+        }
+    },
+    {
+        "id": "pain_complet",
+        "name": "Pain Complet",
+        "type": "food",
+        "description": "Une miche de pain dense et nourrissante, idéale pour les longs voyages. Se conserve bien.",
+        "bonus": {
+            "health": 10
+        }
+    },
+    {
+        "id": "fromage_chevre",
+        "name": "Fromage de Chèvre",
+        "type": "food",
+        "description": "Un fromage affiné à l'odeur forte mais au goût exquis. Parfait avec un morceau de pain.",
+        "bonus": {
+            "health": 8
+        }
+    }
+]

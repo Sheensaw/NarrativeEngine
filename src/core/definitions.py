@@ -60,3 +60,148 @@ KEY_POS_X = "pos_x"
 KEY_POS_Y = "pos_y"
 KEY_INPUTS = "inputs"
 KEY_OUTPUTS = "outputs"
+
+
+# --- MACRO DEFINITIONS (SugarCube-like) ---
+MACRO_DEFINITIONS = {
+    "set": {
+        "label": "Set Variable",
+        "args": [
+            {"name": "name", "type": "string", "label": "Variable Name ($var)"},
+            {"name": "value", "type": "string", "label": "Value (Expression)"},
+        ]
+    },
+    "unset": {
+        "label": "Unset Variable",
+        "args": [
+            {"name": "name", "type": "string", "label": "Variable Name ($var)"},
+        ]
+    },
+    "run": {
+        "label": "Run Script",
+        "args": [
+            {"name": "script", "type": "text", "label": "JavaScript/Code"},
+        ]
+    },
+    "print": {
+        "label": "Print Text",
+        "args": [
+            {"name": "text", "type": "string", "label": "Text to Print"},
+        ]
+    },
+    "audio": {
+        "label": "Play Audio",
+        "args": [
+            {"name": "track", "type": "string", "label": "Track Name"},
+            {"name": "action", "type": "select", "label": "Action", "options": ["play", "stop", "pause", "fadein", "fadeout"]},
+        ]
+    },
+    "goto": {
+        "label": "Go To Passage",
+        "args": [
+            {"name": "target", "type": "node_select", "label": "Passage Name"},
+        ]
+    },
+    "button": {
+        "label": "Button",
+        "args": [
+            {"name": "text", "type": "string", "label": "Button Text"},
+            {"name": "target", "type": "node_select", "label": "Target Passage (Optional)"},
+        ]
+    },
+    "addItem": {
+        "label": "Add Item (Inventory)",
+        "args": [
+            {"name": "item_id", "type": "item_select", "label": "Item"},
+            {"name": "qty", "type": "int", "label": "Quantity", "default": 1},
+        ]
+    },
+    "removeItem": {
+        "label": "Remove Item (Inventory)",
+        "args": [
+            {"name": "item_id", "type": "item_select", "label": "Item"},
+            {"name": "qty", "type": "int", "label": "Quantity", "default": 1},
+        ]
+    },
+    "startQuest": {
+        "label": "Start Quest",
+        "args": [
+            {"name": "quest_id", "type": "quest_select", "label": "Quest"},
+            {"name": "loot", "type": "string", "label": "Loot (Optional)"},
+        ]
+    },
+    "completeQuest": {
+        "label": "Complete Quest",
+        "args": [
+            {"name": "quest_id", "type": "quest_select", "label": "Quest"},
+        ]
+    },
+    "spawn": {
+        "label": "Spawn NPC",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "target", "type": "node_select", "label": "Passage/Location"},
+            {"name": "x", "type": "int", "label": "X Coord (Optional)", "default": 0},
+            {"name": "y", "type": "int", "label": "Y Coord (Optional)", "default": 0},
+        ]
+    },
+    "movePnj": {
+        "label": "Move NPC",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "target", "type": "node_select", "label": "Target Passage"},
+            {"name": "x", "type": "int", "label": "X Coord (Optional)", "default": 0},
+            {"name": "y", "type": "int", "label": "Y Coord (Optional)", "default": 0},
+        ]
+    },
+    "pnj": {
+        "label": "Define NPC",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "name", "type": "string", "label": "Display Name"},
+            {"name": "type", "type": "string", "label": "Type (guard, merchant...)"},
+        ]
+    },
+    "pnjfollow": {
+        "label": "NPC Follow",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "target_id", "type": "string", "label": "Target ID (player/npc)"},
+        ]
+    },
+    "setrelation": {
+        "label": "Set Relation",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "value", "type": "int", "label": "Value (0-100)"},
+        ]
+    },
+    "changerelation": {
+        "label": "Change Relation",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "amount", "type": "int", "label": "Amount (+/-)"},
+        ]
+    },
+    "setloyalty": {
+        "label": "Set Loyalty",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "value", "type": "int", "label": "Value (0-100)"},
+        ]
+    },
+    "changeloyalty": {
+        "label": "Change Loyalty",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "amount", "type": "int", "label": "Amount (+/-)"},
+        ]
+    },
+    "setmood": {
+        "label": "Set Mood",
+        "args": [
+            {"name": "id", "type": "string", "label": "NPC ID"},
+            {"name": "mood", "type": "string", "label": "Mood (happy, angry...)"},
+        ]
+    },
+}

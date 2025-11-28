@@ -54,6 +54,10 @@ class StoryManager:
             print(f"[StoryManager] Nœud introuvable : {node_id}")
             return
 
+        new_node = self.project.nodes[node_id]
+        current_title = self.current_node.title if self.current_node else "None"
+        print(f"[StoryManager] Navigation: '{current_title}' --> '{new_node.title}'")
+
         # 1. Quitter le nœud actuel
         if self.current_node:
             # Support Legacy (Text Scripts)
@@ -67,7 +71,7 @@ class StoryManager:
             self.history.append(self.current_node.id)
 
         # 2. Changer de nœud
-        self.current_node = self.project.nodes[node_id]
+        self.current_node = new_node
 
         # 3. Entrer dans le nouveau nœud
         enter_scripts = self.current_node.logic.get("on_enter", [])
@@ -106,18 +110,35 @@ class StoryManager:
         if structured_choices:
             # Mode Structuré
             for choice_data in structured_choices:
-                # Vérifier condition
+                choice_id = choice_data.get("id")
+                
+                # Check One-Shot Logic
+                if choice_id and self.variables.is_choice_used(choice_id):
+                    after_use = choice_data.get("after_use", "delete")
+                    if after_use == "delete":
+                        continue
+                    elif after_use == "replace":
+                        # Use replacement data
+                        rep_data = choice_data.get("replacement_data", {})
+                        choices.append({
+                            "text": rep_data.get("text", "Choix (Remplacement)"),
+                            "target_id": rep_data.get("target_node_id"),
+                            "original_data": choice_data, # Keep ref if needed
+                            "is_replacement": True
+                        })
+                        continue
+
+                # Normal Choice Logic
                 condition = choice_data.get("condition", "")
                 if not self.parser.evaluate_condition(condition):
                     continue
 
                 target_id = choice_data.get("target_node_id")
-                if not target_id:
-                    continue
-
+                
                 choices.append({
                     "text": choice_data.get("text", "Choix"),
-                    "target_id": target_id
+                    "target_id": target_id,
+                    "data": choice_data # Pass full data for make_choice
                 })
         else:
             # Mode Legacy (Déduction depuis les Edges)
@@ -151,5 +172,27 @@ class StoryManager:
         """Le joueur clique sur un choix."""
         choices = self.get_available_choices()
         if 0 <= index < len(choices):
-            target_id = choices[index]["target_id"]
-            self.set_current_node(target_id)
+            choice = choices[index]
+            
+            print(f"[StoryManager] Choice clicked: {choice.get('text')}")
+            
+            # 1. Execute Events (if any)
+            choice_data = choice.get("data", {})
+            events = choice_data.get("events", [])
+            if events:
+                print(f"[StoryManager] Executing choice events: {events}")
+                self.parser.execute_events(events)
+                
+            # 2. Handle One-Shot
+            if choice_data.get("is_one_shot"):
+                choice_id = choice_data.get("id")
+                if choice_id:
+                    self.variables.mark_choice_used(choice_id)
+            
+            # 3. Navigation
+            target_id = choice.get("target_id")
+            print(f"[StoryManager] Navigating to target_id: {target_id}")
+            if target_id:
+                self.set_current_node(target_id)
+            else:
+                 print("[StoryManager] No target_id for this choice.")

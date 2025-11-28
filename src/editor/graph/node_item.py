@@ -3,9 +3,8 @@ from PyQt6.QtWidgets import QGraphicsItem, QGraphicsTextItem
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QColor, QPen, QBrush, QFont, QPainterPath
 
-from src.core.definitions import NodeType, SocketType, COLORS, NODE_WIDTH, NODE_HEIGHT
+from src.core.definitions import NodeType, COLORS, NODE_WIDTH, NODE_HEIGHT
 from src.core.models import NodeModel
-from src.editor.graph.socket_item import SocketItem
 
 
 class NodeItem(QGraphicsItem):
@@ -29,8 +28,9 @@ class NodeItem(QGraphicsItem):
 
         # Initialisation UI
         self._title_item = QGraphicsTextItem(self)
+        self._preview_item = QGraphicsTextItem(self)
         self._init_ui()
-        self._init_sockets()
+        # Sockets removed as per user request
 
         # Position initiale
         self.setPos(self.model.pos_x, self.model.pos_y)
@@ -44,42 +44,34 @@ class NodeItem(QGraphicsItem):
         self._title_item.setFont(font)
         self._title_item.setPos(10, 5)
 
+        # Preview Content
+        self.update_preview()
+        self._preview_item.setDefaultTextColor(QColor("#aaaaaa"))
+        self._preview_item.setFont(QFont("Segoe UI", 9))
+        self._preview_item.setPos(10, 40)
+        self._preview_item.setTextWidth(self.width - 20)
+
         # Couleur header selon le type
         self.header_color = QColor(COLORS.get(self.model.type, COLORS[NodeType.DIALOGUE]))
         self.bg_color = QColor(COLORS["node_bg"])
 
-    def _init_sockets(self):
-        """Crée les sockets d'entrée/sortie."""
-        self.inputs = []
-        self.outputs = []
-
-        # Par défaut, 1 Entrée
-        self.add_socket(SocketType.INPUT)
-        self.add_socket(SocketType.OUTPUT)
-
-    def add_socket(self, socket_type: SocketType):
-        socket = SocketItem(self, socket_type, index=len(self.outputs) if socket_type == SocketType.OUTPUT else 0)
-
-        if socket_type == SocketType.INPUT:
-            self.inputs.append(socket)
-        else:
-            self.outputs.append(socket)
-
-        self._layout_sockets()
-        return socket
-
-    def _layout_sockets(self):
-        """Place géométriquement les sockets sur les bords."""
-        # Inputs à gauche
-        y_start = 40  # Sous le header
-        spacing = 25
-
-        for i, sock in enumerate(self.inputs):
-            sock.setPos(0, y_start + i * spacing + spacing / 2)
-
-        # Outputs à droite
-        for i, sock in enumerate(self.outputs):
-            sock.setPos(self.width, y_start + i * spacing + spacing / 2)
+    def update_preview(self):
+        """Met à jour le texte de prévisualisation (Contenu + Choix)."""
+        content_text = self.model.content.get("text", "")
+        # Truncate content
+        preview_text = (content_text[:50] + '...') if len(content_text) > 50 else content_text
+        
+        # Add Choices
+        choices = self.model.content.get("choices", [])
+        if choices:
+            preview_text += "\n\n"
+            for i, c in enumerate(choices[:3]): # Max 3 choices in preview
+                target = c.get("target_node_id", "?")
+                preview_text += f"[{i+1}] {c.get('text', 'Choix')} -> {target}\n"
+            if len(choices) > 3:
+                preview_text += "..."
+        
+        self._preview_item.setPlainText(preview_text)
 
     def boundingRect(self) -> QRectF:
         return QRectF(0, 0, self.width, self.height)
@@ -93,18 +85,14 @@ class NodeItem(QGraphicsItem):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path_body)
 
-        # 2. En-tête (Header) - CRASH FIX : Suppression de simplified()
-        # On dessine le header manuellement pour éviter les calculs booléens lourds qui font crasher Qt
+        # 2. En-tête (Header)
         path_header = QPainterPath()
         path_header.setFillRule(Qt.FillRule.WindingFill)
-
-        # Partie haute arrondie
         path_header.addRoundedRect(0, 0, self.width, 30, self.radius, self.radius)
-        # Partie basse rectangulaire pour "couper" l'arrondi du bas
         path_header.addRect(0, 20, self.width, 10)
 
         painter.setBrush(QBrush(self.header_color))
-        painter.drawPath(path_header)  # Dessin direct sans simplification
+        painter.drawPath(path_header)
 
         # 3. Bordure (Sélection)
         if self.isSelected():
@@ -119,17 +107,8 @@ class NodeItem(QGraphicsItem):
     def itemChange(self, change, value):
         """Callback QT quand l'item change (ex: déplacement)."""
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            # Mettre à jour les liens connectés
-            self._update_connected_edges()
-
             # Mettre à jour le modèle de données (Data sync)
             self.model.pos_x = value.x()
             self.model.pos_y = value.y()
 
         return super().itemChange(change, value)
-
-    def _update_connected_edges(self):
-        """Force le redessin de tous les câbles attachés."""
-        for sock in self.inputs + self.outputs:
-            for edge in sock.edges:
-                edge.update_path()

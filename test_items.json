@@ -1,0 +1,27 @@
+[
+    {
+        "id": "sword_of_testing",
+        "name": "Épée de Test",
+        "type": "weapon",
+        "description": "Une épée légendaire forgée pour tester la base de données.",
+        "subtype": "longsword",
+        "damage_min": 10,
+        "damage_max": 20,
+        "crit_chance": 15,
+        "speed": 1.2,
+        "requirements": {
+            "forceMin": 5,
+            "levelMin": 2
+        },
+        "effects": {
+            "bleed": 10
+        }
+    },
+    {
+        "id": "potion_db",
+        "name": "Potion SQL",
+        "type": "potion",
+        "description": "Restaure 50 PV et optimise les requêtes.",
+        "heal": 50
+    }
+]

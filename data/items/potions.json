@@ -1,0 +1,21 @@
+[
+    {
+        "id": "potion_soin_mineure",
+        "name": "Potion de Soin Mineure",
+        "type": "potion",
+        "description": "Une fiole contenant un liquide rouge vif au goût de cerise amère. Referme les plaies superficielles instantanément.",
+        "effects": {
+            "heal_instant": 20
+        }
+    },
+    {
+        "id": "elixir_force",
+        "name": "Élixir de Force",
+        "type": "potion",
+        "description": "Un liquide épais et bouillonnant. Une seule gorgée suffit pour sentir ses muscles gonfler d'énergie pure.",
+        "effects": {
+            "buff_str": 5,
+            "duration": 60
+        }
+    }
+]
