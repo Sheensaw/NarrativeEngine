@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Narrative RPG Engine - Editor")
+        self.setWindowIcon(QIcon("src/assets/icon.ico"))
         self.resize(1600, 900)
         self.setStyleSheet("""
             QMainWindow { background-color: #2b2b2b; }

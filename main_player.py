@@ -19,6 +19,7 @@ class PlayerWindow(QMainWindow):
     def __init__(self, project_file=None):
         super().__init__()
         self.setWindowTitle("Narrative Player")
+        self.setWindowIcon(QIcon("src/assets/icon.ico"))
         self.resize(1280, 720)
         
         # 1. Load Stylesheet
