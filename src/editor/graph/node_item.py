@@ -1,3 +1,4 @@
+
 # src/editor/graph/node_item.py
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsTextItem
 from PyQt6.QtCore import QRectF, Qt
@@ -10,7 +11,7 @@ from src.core.models import NodeModel
 class NodeItem(QGraphicsItem):
     """
     Représentation graphique d'un nœud (NodeModel).
-    Gère le dessin, les interactions souris et les sockets enfants.
+    Gère le dessin, les interactions souris et les connexions dynamiques.
     """
 
     def __init__(self, model: NodeModel):
@@ -24,13 +25,15 @@ class NodeItem(QGraphicsItem):
 
         self.width = NODE_WIDTH
         self.height = NODE_HEIGHT
-        self.radius = 10.0  # Coins arrondis
+        self.radius = 8.0 
 
         # Initialisation UI
         self._title_item = QGraphicsTextItem(self)
         self._preview_item = QGraphicsTextItem(self)
         self._init_ui()
-        # Sockets removed as per user request
+        
+        # Track connected edges to update them when moving
+        self.edges = []
 
         # Position initiale
         self.setPos(self.model.pos_x, self.model.pos_y)
@@ -72,6 +75,18 @@ class NodeItem(QGraphicsItem):
                 preview_text += "..."
         
         self._preview_item.setPlainText(preview_text)
+        
+        # Update title if model changed
+        if self._title_item.toPlainText() != self.model.title:
+            self._title_item.setPlainText(self.model.title)
+
+    def add_edge(self, edge):
+        if edge not in self.edges:
+            self.edges.append(edge)
+
+    def remove_edge(self, edge):
+        if edge in self.edges:
+            self.edges.remove(edge)
 
     def boundingRect(self) -> QRectF:
         return QRectF(0, 0, self.width, self.height)
@@ -81,6 +96,8 @@ class NodeItem(QGraphicsItem):
         # 1. Corps (Body) - Fond général
         path_body = QPainterPath()
         path_body.addRoundedRect(0, 0, self.width, self.height, self.radius, self.radius)
+        
+        # Gradient background? For now simple flat color is cleaner
         painter.setBrush(QBrush(self.bg_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawPath(path_body)
@@ -89,7 +106,7 @@ class NodeItem(QGraphicsItem):
         path_header = QPainterPath()
         path_header.setFillRule(Qt.FillRule.WindingFill)
         path_header.addRoundedRect(0, 0, self.width, 30, self.radius, self.radius)
-        path_header.addRect(0, 20, self.width, 10)
+        path_header.addRect(0, 20, self.width, 10) # Cover bottom corners of header
 
         painter.setBrush(QBrush(self.header_color))
         painter.drawPath(path_header)
@@ -110,5 +127,9 @@ class NodeItem(QGraphicsItem):
             # Mettre à jour le modèle de données (Data sync)
             self.model.pos_x = value.x()
             self.model.pos_y = value.y()
+            
+            # Update connected edges
+            for edge in self.edges:
+                edge.update_path()
 
         return super().itemChange(change, value)

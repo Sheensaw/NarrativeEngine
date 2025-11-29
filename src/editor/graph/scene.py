@@ -1,3 +1,4 @@
+
 # src/editor/graph/scene.py
 import math
 from typing import Optional
@@ -6,16 +7,15 @@ from PyQt6.QtWidgets import QGraphicsScene
 from PyQt6.QtCore import Qt, QRectF, QLineF
 from PyQt6.QtGui import QColor, QPen, QPainter
 
-from src.core.definitions import COLORS, SocketType
-from src.core.models import ProjectModel, NodeModel, EdgeModel
+from src.core.definitions import COLORS
+from src.core.models import ProjectModel, NodeModel
 from src.editor.graph.node_item import NodeItem
 from src.editor.graph.edge_item import EdgeItem
-from src.editor.graph.socket_item import SocketItem
 
 
 class NodeScene(QGraphicsScene):
     """
-    Gère le contenu du graphe : Nœuds, Liens et Grille de fond.
+    Gère le contenu du graphe : Nœuds, Liens dynamiques et Grille de fond.
     """
 
     def __init__(self, parent=None):
@@ -29,7 +29,7 @@ class NodeScene(QGraphicsScene):
 
         # Style de la grille
         self.grid_size = 20
-        self.grid_squares = 5  # Lignes fortes tous les 5 carrés
+        self.grid_squares = 5
         self._color_bg = QColor(COLORS["grid_bg"])
         self._pen_light = QPen(QColor(COLORS["grid_lines_light"]))
         self._pen_light.setWidth(1)
@@ -37,23 +37,25 @@ class NodeScene(QGraphicsScene):
         self._pen_dark.setWidth(2)
 
         self.setBackgroundBrush(self._color_bg)
+        
+        # Map node_id -> NodeItem
+        self.node_map = {}
+        # List of current edges
+        self.edges = []
 
     def set_project(self, project: ProjectModel):
         """Charge un projet et peuple la scène."""
         self.clear()
         self.project = project
-
-        # Dictionnaire temporaire pour relier les sockets lors de la création des liens
-        # Structure: {node_id: NodeItem}
         self.node_map = {}
+        self.edges = []
 
         # 1. Créer les nœuds
         for node_model in project.nodes.values():
             self.add_node_item(node_model)
 
-        # 2. Créer les liens
-        for edge_model in project.edges:
-            self.add_edge_item(edge_model)
+        # 2. Créer les liens dynamiques
+        self.refresh_connections()
 
     def add_node_item(self, model: NodeModel):
         """Crée et ajoute un item de nœud."""
@@ -62,33 +64,68 @@ class NodeScene(QGraphicsScene):
         self.node_map[model.id] = item
         return item
 
-    def add_edge_item(self, model: EdgeModel):
-        """Crée et ajoute un item de lien (connecte visuellement les sockets)."""
-        source_item = self.node_map.get(model.start_node_id)
-        target_item = self.node_map.get(model.end_node_id)
+    def refresh_connections(self):
+        """
+        Reconstruit tous les liens en fonction des choix des nœuds.
+        Gère les liens bidirectionnels.
+        """
+        # 1. Supprimer les liens existants
+        for edge in self.edges:
+            self.removeItem(edge)
+            # Clean up references in nodes
+            if edge.source_node: edge.source_node.remove_edge(edge)
+            if edge.target_node: edge.target_node.remove_edge(edge)
+        self.edges = []
 
-        if not source_item or not target_item:
+        if not self.project:
             return
 
-        # Récupération des sockets spécifiques par index
-        # Sécurité : on vérifie que l'index existe
-        if model.start_socket_index < len(source_item.outputs):
-            src_sock = source_item.outputs[model.start_socket_index]
-        else:
-            return  # Index invalide
+        # 2. Analyser les connexions requises
+        # Set of (id1, id2) tuples to track created connections and avoid duplicates
+        connections = set()
+        
+        # Helper to get sorted pair
+        def get_pair(id1, id2):
+            return tuple(sorted((id1, id2)))
 
-        if model.end_socket_index < len(target_item.inputs):
-            dst_sock = target_item.inputs[model.end_socket_index]
-        else:
-            return
+        # Collect all directed links: A -> B
+        directed_links = [] # List of (source_id, target_id)
+        
+        for node_id, node_model in self.project.nodes.items():
+            choices = node_model.content.get("choices", [])
+            for choice in choices:
+                target_id = choice.get("target_node_id")
+                if target_id and target_id in self.project.nodes:
+                    directed_links.append((node_id, target_id))
 
-        # Création visuelle
-        edge = EdgeItem(src_sock, dst_sock)
-        self.addItem(edge)
-
-        # Enregistrement logique dans les sockets
-        src_sock.add_edge(edge)
-        dst_sock.add_edge(edge)
+        # Process links
+        processed_pairs = set()
+        
+        for src_id, dst_id in directed_links:
+            if src_id == dst_id: continue # Ignore self-loops for now or handle differently
+            
+            pair = get_pair(src_id, dst_id)
+            if pair in processed_pairs:
+                continue
+            
+            # Check if it's bidirectional
+            # It is if there is also a link dst_id -> src_id
+            is_bi = (dst_id, src_id) in directed_links and (src_id, dst_id) in directed_links
+            
+            src_item = self.node_map.get(src_id)
+            dst_item = self.node_map.get(dst_id)
+            
+            if src_item and dst_item:
+                edge = EdgeItem(src_item, dst_item, is_bidirectional=is_bi)
+                self.addItem(edge)
+                self.edges.append(edge)
+                
+                src_item.add_edge(edge)
+                dst_item.add_edge(edge)
+            
+            processed_pairs.add(pair)
+            
+        self.update()
 
     def drawBackground(self, painter: QPainter, rect: QRectF):
         """Dessine une grille infinie performante."""

@@ -55,18 +55,6 @@ class MainWindow(QMainWindow):
         self.dock_database.hide()
 
         # 3. Initialiser la Toolbar et Menus
-        self._init_actions()
-
-        # 4. Charger un projet vide par défaut ou le dernier projet
-        self.new_project()
-        self._load_last_project()
-
-        # 5. Connexions Signaux
-        self.scene.selectionChanged.connect(self.on_selection_changed)
-
-    def _init_actions(self):
-        """Barre d'outils supérieure."""
-        print("DEBUG: Init Actions")
         toolbar = QToolBar("Main Toolbar", self)
         toolbar.setObjectName("MainToolbar")
         self.addToolBar(toolbar)
@@ -115,6 +103,14 @@ class MainWindow(QMainWindow):
         act_play = QAction("▶ Jouer", self)
         act_play.triggered.connect(self.run_game)
         toolbar.addAction(act_play)
+
+        # 4. Charger un projet vide par défaut ou le dernier projet
+        self.new_project()
+        self._load_last_project()
+
+        # 5. Connexions Signaux
+        self.scene.selectionChanged.connect(self.on_selection_changed)
+        self.inspector.data_changed.connect(self.scene.refresh_connections)
 
     def _ensure_default_variables(self, project: ProjectModel):
         """Injecte les variables par défaut si elles manquent."""

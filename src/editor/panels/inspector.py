@@ -457,6 +457,201 @@ class ChoiceEditorWidget(QWidget):
         self.data_changed.emit()
 
     def remove_choice(self, item_widget):
+        macro_key = self.combo_type.currentData()
+        new_event = {"type": macro_key, "parameters": {}}
+        self.events.append(new_event)
+        self._create_event_widget(new_event)
+        self.data_changed.emit()
+
+    def remove_event(self, item_widget):
+        if item_widget.event_data in self.events:
+            self.events.remove(item_widget.event_data)
+        self.data_changed.emit()
+
+
+class ChoiceItemWidget(QFrame):
+    removed = pyqtSignal()
+    changed = pyqtSignal()
+
+    def __init__(self, choice_data, project=None):
+        super().__init__()
+        self.choice_data = choice_data
+        self.project = project
+        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        self.setStyleSheet("QFrame { background-color: #444; border-radius: 5px; margin-bottom: 5px; }")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Compact Layout
+        # Row 1: Text | Target | Remove
+        row1 = QHBoxLayout()
+        
+        self.inp_text = QLineEdit(choice_data.get("text", ""))
+        self.inp_text.setPlaceholderText("Texte du choix...")
+        self.inp_text.textChanged.connect(self.on_change)
+        row1.addWidget(self.inp_text, 2)
+        
+        self.combo_target = QComboBox()
+        self.combo_target.setEditable(True)
+        self.combo_target.addItem("", "")
+        if self.project:
+            for node in self.project.nodes.values():
+                self.combo_target.addItem(node.title, node.id)
+        
+        # Set current target
+        target_id = choice_data.get("target_node_id", "")
+        idx = self.combo_target.findData(target_id)
+        if idx >= 0:
+            self.combo_target.setCurrentIndex(idx)
+        else:
+            self.combo_target.setEditText(target_id)
+            
+        self.combo_target.currentIndexChanged.connect(self.on_target_changed)
+        self.combo_target.editTextChanged.connect(self.on_target_text_changed)
+        row1.addWidget(self.combo_target, 2)
+        
+        btn_remove = QPushButton("X")
+        btn_remove.setFixedSize(20, 20)
+        btn_remove.setStyleSheet("background-color: #d9534f; color: white; border: none; border-radius: 3px;")
+        btn_remove.clicked.connect(self.remove_self)
+        row1.addWidget(btn_remove)
+        
+        layout.addLayout(row1)
+        
+        # Row 2: Condition | One-Shot | After Use
+        row2 = QHBoxLayout()
+        
+        self.inp_cond = QLineEdit(choice_data.get("condition", ""))
+        self.inp_cond.setPlaceholderText("Condition (ex: gold >= 10)")
+        self.inp_cond.textChanged.connect(self.on_change)
+        row2.addWidget(self.inp_cond)
+        
+        self.chk_oneshot = QCheckBox("Unique")
+        self.chk_oneshot.setChecked(choice_data.get("is_one_shot", False))
+        self.chk_oneshot.stateChanged.connect(self.on_oneshot_changed)
+        row2.addWidget(self.chk_oneshot)
+        
+        self.combo_after = QComboBox()
+        self.combo_after.addItems(["Disparaître", "Remplacer"])
+        current_after = choice_data.get("after_use", "delete")
+        self.combo_after.setCurrentIndex(0 if current_after == "delete" else 1)
+        self.combo_after.currentIndexChanged.connect(self.on_after_changed)
+        # Only visible if oneshot is checked
+        self.combo_after.setVisible(self.chk_oneshot.isChecked())
+        row2.addWidget(self.combo_after)
+        
+        layout.addLayout(row2)
+        
+        # Event Editor (Collapsible or just below)
+        self.event_editor = EventEditorWidget("Événements")
+        self.event_editor.set_events(choice_data.get("events", []), project=self.project)
+        self.event_editor.data_changed.connect(self.on_events_changed)
+        layout.addWidget(self.event_editor)
+
+    def remove_self(self):
+        self.removed.emit()
+        self.deleteLater()
+
+    def on_change(self):
+        self.choice_data["text"] = self.inp_text.text()
+        self.choice_data["condition"] = self.inp_cond.text()
+        self.changed.emit()
+
+    def on_target_changed(self, index):
+        data = self.combo_target.itemData(index)
+        if data:
+            self.choice_data["target_node_id"] = data
+            self.changed.emit()
+
+    def on_target_text_changed(self, text):
+        self.choice_data["target_node_id"] = text
+        self.changed.emit()
+        
+    def on_oneshot_changed(self, state):
+        is_checked = bool(state)
+        self.choice_data["is_one_shot"] = is_checked
+        self.combo_after.setVisible(is_checked)
+        self.changed.emit()
+        
+    def on_after_changed(self, index):
+        self.choice_data["after_use"] = "delete" if index == 0 else "replace"
+        self.changed.emit()
+        
+    def on_events_changed(self):
+        self.choice_data["events"] = self.event_editor.events
+        self.changed.emit()
+
+
+class ChoiceEditorWidget(QWidget):
+    """Widget pour éditer les choix avec une UI ergonomique."""
+    
+    data_changed = pyqtSignal()
+    
+    def __init__(self, title="Choix"):
+        super().__init__()
+        self.choices = []
+        self.project = None
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Scroll Area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
+        
+        self.container_widget = QWidget()
+        self.container_widget.setStyleSheet("background-color: transparent;")
+        self.container_layout = QVBoxLayout(self.container_widget)
+        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.container_layout.setSpacing(5)
+        
+        self.scroll_area.setWidget(self.container_widget)
+        layout.addWidget(self.scroll_area)
+        
+        # Add Button
+        self.btn_add = QPushButton("Ajouter un Choix")
+        self.btn_add.setStyleSheet("background-color: #5cb85c; padding: 5px;")
+        self.btn_add.clicked.connect(self.add_choice)
+        layout.addWidget(self.btn_add)
+
+    def set_choices(self, choices, project=None):
+        self.choices = choices if choices else []
+        self.project = project
+        self.refresh_list()
+
+    def refresh_list(self):
+        while self.container_layout.count():
+            child = self.container_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        for c in self.choices:
+            self._create_choice_widget(c)
+
+    def _create_choice_widget(self, choice_data):
+        item = ChoiceItemWidget(choice_data, self.project)
+        item.removed.connect(lambda: self.remove_choice(item))
+        item.changed.connect(self.data_changed.emit)
+        self.container_layout.addWidget(item)
+
+    def add_choice(self):
+        new_choice = {
+            "id": str(uuid.uuid4()),
+            "text": "Nouveau Choix", 
+            "target_node_id": "", 
+            "condition": "",
+            "is_one_shot": False,
+            "after_use": "delete",
+            "events": []
+        }
+        self.choices.append(new_choice)
+        self._create_choice_widget(new_choice)
+        self.data_changed.emit()
+
+    def remove_choice(self, item_widget):
         if item_widget.choice_data in self.choices:
             self.choices.remove(item_widget.choice_data)
         self.data_changed.emit()
@@ -464,9 +659,9 @@ class ChoiceEditorWidget(QWidget):
 
 class InspectorPanel(QWidget):
     """
-    Panneau latéral affichant les propriétés de l'objet sélectionné.
-    Organisé avec des onglets/groupes pliables (QToolBox).
+    Panneau latéral pour éditer les propriétés du nœud sélectionné.
     """
+    data_changed = pyqtSignal() # Signal global pour rafraîchir la scène
 
     def __init__(self):
         super().__init__()
@@ -474,14 +669,15 @@ class InspectorPanel(QWidget):
         self.project = None
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
 
-        # Titre du panneau
-        self.lbl_header = QLabel("Propriétés")
+        # En-tête
+        self.lbl_header = QLabel("Propriétés du Nœud")
         self.lbl_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_header.setStyleSheet("background-color: #333; color: white; padding: 10px; font-weight: bold;")
+        self.lbl_header.setStyleSheet("background: #333; color: white; padding: 10px; font-weight: bold;")
         self.layout.addWidget(self.lbl_header)
 
-        # Stylesheet global pour le panneau
+        # Style CSS pour les sous-panneaux
         self.setStyleSheet("""
             QWidget {
                 background-color: #2b2b2b;
@@ -495,8 +691,8 @@ class InspectorPanel(QWidget):
             }
             QGroupBox {
                 border: 1px solid #555;
+                border-radius: 5px;
                 margin-top: 10px;
-                padding-top: 10px;
                 font-weight: bold;
             }
             QGroupBox::title {
@@ -635,18 +831,22 @@ class InspectorPanel(QWidget):
         if self.current_node_item:
             self.current_node_item.model.title = text
             self.current_node_item._title_item.setPlainText(text)
+            self.data_changed.emit()
 
     def on_content_changed(self):
         if self.current_node_item:
             text = self.txt_content.toPlainText()
             self.current_node_item.model.content["text"] = text
             self.current_node_item.update_preview()
+            self.data_changed.emit()
 
     def on_logic_changed(self):
         if self.current_node_item:
             self.current_node_item.model.logic["on_enter"] = self.editor_on_enter.events
+            self.data_changed.emit()
 
     def on_choices_changed(self):
         if self.current_node_item:
             self.current_node_item.model.content["choices"] = self.editor_choices.choices
             self.current_node_item.update_preview()
+            self.data_changed.emit()
