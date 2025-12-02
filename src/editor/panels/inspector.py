@@ -1,13 +1,12 @@
-
 import sys
 import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QComboBox, QPushButton, 
     QScrollArea, QFrame, QCheckBox, QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
-    QTabWidget, QToolButton, QSizePolicy, QApplication
+    QTabWidget, QToolButton, QSizePolicy, QApplication, QListWidget, QListWidgetItem, QAbstractItemView
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation
+from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation, QSize
 from PyQt6.QtGui import QUndoStack, QAction, QIcon
 
 from src.core.commands import ReorderChoicesCommand, EditChoiceCommand
@@ -325,6 +324,7 @@ class EventEditorWidget(QWidget):
 class ChoiceItemWidget(QFrame):
     removed = pyqtSignal()
     changed = pyqtSignal()
+    copy_requested = pyqtSignal(dict)
 
     def __init__(self, choice_data, project=None):
         super().__init__()
@@ -404,7 +404,6 @@ class ChoiceItemWidget(QFrame):
         self.combo_action.addItem("Aucune (Reste visible)", "none")
         
         current_action = choice_data.get("after_use", "delete")
-        # Migrate old "modify_text" to "delete" + check modify text
         if current_action == "modify_text":
             current_action = "delete"
             choice_data["modify_text_enabled"] = True
@@ -471,6 +470,18 @@ class ChoiceItemWidget(QFrame):
         self.on_action_changed()
         self.on_modify_text_toggled()
 
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        action_copy = QAction("Copier", self)
+        action_copy.triggered.connect(lambda: self.copy_requested.emit(self.choice_data))
+        menu.addAction(action_copy)
+        
+        action_delete = QAction("Supprimer", self)
+        action_delete.triggered.connect(self.remove_self)
+        menu.addAction(action_delete)
+        
+        menu.exec(event.globalPos())
+
     def on_oneshot_toggled(self):
         is_oneshot = self.chk_oneshot.isChecked()
         self.group_oneshot.setVisible(is_oneshot)
@@ -512,8 +523,26 @@ class ChoiceItemWidget(QFrame):
         self.removed.emit()
 
 
+class ChoiceListWidget(QListWidget):
+    """QListWidget personnalisé pour gérer le Drag & Drop des choix."""
+    order_changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setDropIndicatorShown(True)
+        self.setStyleSheet("QListWidget { background: transparent; border: none; } QListWidget::item { border-bottom: 1px solid #555; }")
+
+    def dropEvent(self, event):
+        super().dropEvent(event)
+        self.order_changed.emit()
+
+
 class ChoiceEditorWidget(QWidget):
-    """Widget pour éditer les choix avec une UI ergonomique."""
+    """Widget pour éditer les choix avec Drag & Drop et Context Menu."""
     
     data_changed = pyqtSignal()
     
@@ -527,36 +556,22 @@ class ChoiceEditorWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # Header with Copy/Paste
+        # Header with Copy/Paste (Global)
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("<b>Choix</b>"))
         
-        self.btn_copy = QPushButton("Copier")
-        self.btn_copy.setStyleSheet("background-color: #5bc0de; padding: 3px;")
-        self.btn_copy.clicked.connect(self.copy_choices)
-        header_layout.addWidget(self.btn_copy)
-        
-        self.btn_paste = QPushButton("Coller")
+        # Global Paste Button (since we can't context menu on empty list easily)
+        self.btn_paste = QPushButton("Coller Choix")
         self.btn_paste.setStyleSheet("background-color: #f0ad4e; padding: 3px;")
         self.btn_paste.clicked.connect(self.paste_choices)
         header_layout.addWidget(self.btn_paste)
         
         layout.addLayout(header_layout)
         
-        # Scroll Area
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setStyleSheet("background-color: transparent;")
-        
-        self.container_widget = QWidget()
-        self.container_widget.setStyleSheet("background-color: transparent;")
-        self.container_layout = QVBoxLayout(self.container_widget)
-        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.container_layout.setSpacing(5)
-        
-        self.scroll_area.setWidget(self.container_widget)
-        layout.addWidget(self.scroll_area)
+        # List Widget for Drag & Drop
+        self.list_widget = ChoiceListWidget()
+        self.list_widget.order_changed.connect(self.on_order_changed)
+        layout.addWidget(self.list_widget)
         
         # Add Button
         self.btn_add = QPushButton("Ajouter un Choix")
@@ -571,52 +586,46 @@ class ChoiceEditorWidget(QWidget):
         self.refresh_list()
 
     def refresh_list(self):
-        while self.container_layout.count():
-            item = self.container_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-        
+        self.list_widget.clear()
         for c in self.choices:
-            self._create_choice_widget(c)
+            self._create_choice_item(c)
 
-    def _create_choice_widget(self, choice_data):
-        # Container for row (Item + Buttons)
-        row_widget = QWidget()
-        row_layout = QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(2)
+    def _create_choice_item(self, choice_data):
+        item = QListWidgetItem(self.list_widget)
+        item.setSizeHint(Qt.QSize(0, 0)) # Will be adjusted by widget
         
-        # Reorder Buttons
-        btn_layout = QVBoxLayout()
-        btn_layout.setSpacing(0)
-        btn_layout.setContentsMargins(0,0,0,0)
+        widget = ChoiceItemWidget(choice_data, self.project)
+        widget.removed.connect(lambda: self.remove_choice(choice_data)) # Pass data, not widget
+        widget.changed.connect(self.data_changed.emit)
+        widget.copy_requested.connect(self.copy_choice)
         
-        btn_up = QToolButton()
-        btn_up.setText("▲")
-        btn_up.setFixedSize(20, 20)
-        btn_up.setStyleSheet("border: none; color: #888;")
+        self.list_widget.setItemWidget(item, widget)
+        # Adjust size hint based on widget
+        item.setSizeHint(widget.sizeHint())
         
-        btn_down = QToolButton()
-        btn_down.setText("▼")
-        btn_down.setFixedSize(20, 20)
-        btn_down.setStyleSheet("border: none; color: #888;")
-        
-        btn_layout.addWidget(btn_up)
-        btn_layout.addWidget(btn_down)
-        row_layout.addLayout(btn_layout)
+        # Store data reference in item
+        item.setData(Qt.ItemDataRole.UserRole, choice_data)
 
-        # Item
-        item = ChoiceItemWidget(choice_data, self.project)
-        item.removed.connect(lambda: self.remove_choice(item))
-        item.changed.connect(self.data_changed.emit)
-        row_layout.addWidget(item)
-        
-        # Connect buttons
-        btn_up.clicked.connect(lambda: self.move_choice_up(item))
-        btn_down.clicked.connect(lambda: self.move_choice_down(item))
+    def on_order_changed(self):
+        # Reconstruct choices list from list_widget order
+        new_choices = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            data = item.data(Qt.ItemDataRole.UserRole)
+            new_choices.append(data)
+            
+        if new_choices == self.choices:
+            return
 
-        self.container_layout.addWidget(row_widget)
+        if self.undo_stack and self.node_model:
+            cmd = ReorderChoicesCommand(self.node_model, new_choices, self.choices, self.data_changed)
+            self.undo_stack.push(cmd)
+            self.choices = new_choices
+            # No need to refresh list, it's already visually correct
+            self.data_changed.emit()
+        else:
+            self.choices = new_choices
+            self.data_changed.emit()
 
     def add_choice(self):
         new_choice = {
@@ -638,67 +647,29 @@ class ChoiceEditorWidget(QWidget):
             self.data_changed.emit()
         else:
             self.choices.append(new_choice)
-            self._create_choice_widget(new_choice)
+            self.refresh_list()
             self.data_changed.emit()
 
-    def remove_choice(self, item_widget):
-        if item_widget.choice_data in self.choices:
+    def remove_choice(self, choice_data):
+        if choice_data in self.choices:
             if self.undo_stack and self.node_model:
                 new_list = self.choices.copy()
-                new_list.remove(item_widget.choice_data)
+                new_list.remove(choice_data)
                 cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.data_changed)
                 self.undo_stack.push(cmd)
                 self.choices = new_list
                 self.refresh_list()
                 self.data_changed.emit()
             else:
-                self.choices.remove(item_widget.choice_data)
-                self.data_changed.emit()
-                self.refresh_list()
-
-    def move_choice_up(self, item_widget):
-        if item_widget.choice_data not in self.choices: return
-        idx = self.choices.index(item_widget.choice_data)
-        if idx > 0:
-            new_list = self.choices.copy()
-            new_list[idx], new_list[idx-1] = new_list[idx-1], new_list[idx]
-            
-            if self.undo_stack and self.node_model:
-                cmd = ReorderChoicesCommand(self.node_model, new_list, self.choices, self.data_changed)
-                self.undo_stack.push(cmd)
-                self.choices = new_list
-                self.refresh_list()
-                self.data_changed.emit()
-            else:
-                self.choices = new_list
+                self.choices.remove(choice_data)
                 self.refresh_list()
                 self.data_changed.emit()
 
-    def move_choice_down(self, item_widget):
-        if item_widget.choice_data not in self.choices: return
-        idx = self.choices.index(item_widget.choice_data)
-        if idx < len(self.choices) - 1:
-            new_list = self.choices.copy()
-            new_list[idx], new_list[idx+1] = new_list[idx+1], new_list[idx]
-            
-            if self.undo_stack and self.node_model:
-                cmd = ReorderChoicesCommand(self.node_model, new_list, self.choices, self.data_changed)
-                self.undo_stack.push(cmd)
-                self.choices = new_list
-                self.refresh_list()
-                self.data_changed.emit()
-            else:
-                self.choices = new_list
-                self.refresh_list()
-                self.data_changed.emit()
-
-    def copy_choices(self):
+    def copy_choice(self, choice_data):
         import json
-        if not self.choices:
-            return
         clipboard = QApplication.clipboard()
-        # Deep copy
-        data = json.dumps(self.choices)
+        # Wrap in list for consistency with multi-copy
+        data = json.dumps([choice_data])
         clipboard.setText(data)
 
     def paste_choices(self):
@@ -739,7 +710,6 @@ class TextVariantItemWidget(QFrame):
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
-        
         # Header: Condition + Remove
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("Condition:"))

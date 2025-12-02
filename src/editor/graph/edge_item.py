@@ -131,6 +131,23 @@ class EdgeItem(QGraphicsPathItem):
 
         return QPolygonF([end_point, p1, p2])
 
+    def boundingRect(self):
+        """
+        Override to include arrowheads which are drawn manually in paint().
+        """
+        rect = super().boundingRect()
+        
+        # Add arrowheads to the bounding rect
+        if self.arrow_head_dest:
+            rect = rect.united(self.arrow_head_dest.boundingRect())
+            
+        if self.is_bidirectional and self.arrow_head_src:
+            rect = rect.united(self.arrow_head_src.boundingRect())
+            
+        # Add a small margin for pen width and anti-aliasing
+        margin = 5.0
+        return rect.adjusted(-margin, -margin, margin, margin)
+
     def paint(self, painter, option, widget=None):
         super().paint(painter, option, widget)
         
