@@ -137,6 +137,70 @@ class QuestModel:
 
 
 @dataclass
+class GroupModel:
+    """
+    Représente un groupe visuel de nœuds (ex: une zone géographique).
+    """
+    id: str = field(default_factory=generate_id)
+    title: str = "Nouveau Groupe"
+    pos_x: float = 0.0
+    pos_y: float = 0.0
+    width: float = 300.0
+    height: float = 300.0
+    color: str = "#333333" # Hex color
+    
+    # Propriétés partagées par les nœuds du groupe (ex: continent, city)
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'GroupModel':
+        return GroupModel(
+            id=data.get("id", generate_id()),
+            title=data.get("title", "Nouveau Groupe"),
+            pos_x=float(data.get("pos_x", 0.0)),
+            pos_y=float(data.get("pos_y", 0.0)),
+            width=float(data.get("width", 300.0)),
+            height=float(data.get("height", 300.0)),
+            color=data.get("color", "#333333"),
+            properties=data.get("properties", {})
+        )
+
+
+@dataclass
+class LocationModel:
+    """
+    Représente un lieu (Location) dans le jeu.
+    """
+    id: str = field(default_factory=generate_id)
+    place: str = "Nouveau Lieu"
+    city: str = ""
+    coords: Dict[str, float] = field(default_factory=lambda: {"x": 0.0, "y": 0.0})
+    type: str = "Autre"
+    continent: str = "Eldaron"
+    source_file: str = ""
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'LocationModel':
+        return LocationModel(
+            id=data.get("id", generate_id()),
+            place=data.get("place", "Nouveau Lieu"),
+            city=data.get("city", ""),
+            coords=data.get("coords", {"x": 0.0, "y": 0.0}),
+            type=data.get("type", "Autre"),
+            continent=data.get("continent", "Eldaron"),
+            source_file=data.get("source_file", ""),
+            properties=data.get("properties", {})
+        )
+
+
+@dataclass
 class ProjectModel:
     """
     Le conteneur racine de tout le projet.
@@ -150,11 +214,13 @@ class ProjectModel:
     # Données du graphe
     nodes: Dict[str, NodeModel] = field(default_factory=dict)
     edges: List[EdgeModel] = field(default_factory=list)
+    groups: Dict[str, GroupModel] = field(default_factory=dict)
 
-    # Données RPG (Variables globales, définitions items/quêtes)
+    # Données RPG (Variables globales, définitions items/quêtes/lieux)
     variables: Dict[str, Any] = field(default_factory=dict)
     items: Dict[str, ItemModel] = field(default_factory=dict)
     quests: Dict[str, QuestModel] = field(default_factory=dict)
+    locations: Dict[str, LocationModel] = field(default_factory=dict)
 
     def add_node(self, node: NodeModel):
         self.nodes[node.id] = node
@@ -174,6 +240,15 @@ class ProjectModel:
         self.edges.append(edge)
         self.last_modified = time.time()
 
+    def add_group(self, group: GroupModel):
+        self.groups[group.id] = group
+        self.last_modified = time.time()
+
+    def remove_group(self, group_id: str):
+        if group_id in self.groups:
+            del self.groups[group_id]
+            self.last_modified = time.time()
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "metadata": {
@@ -185,12 +260,14 @@ class ProjectModel:
             },
             "graph": {
                 "nodes": [n.to_dict() for n in self.nodes.values()],
-                "edges": [e.to_dict() for e in self.edges]
+                "edges": [e.to_dict() for e in self.edges],
+                "groups": [g.to_dict() for g in self.groups.values()]
             },
             "database": {
                 "variables": self.variables,
                 "items": [i.to_dict() for i in self.items.values()],
-                "quests": [q.to_dict() for q in self.quests.values()]
+                "quests": [q.to_dict() for q in self.quests.values()],
+                "locations": [l.to_dict() for l in self.locations.values()]
             }
         }
 
@@ -219,6 +296,11 @@ class ProjectModel:
             edge = EdgeModel.from_dict(edge_dict)
             project.edges.append(edge)
 
+        # Reconstitution des groupes
+        for group_dict in graph_data.get("groups", []):
+            group = GroupModel.from_dict(group_dict)
+            project.groups[group.id] = group
+
         # Database
         db_data = data.get("database", {})
         project.variables = db_data.get("variables", {})
@@ -230,5 +312,9 @@ class ProjectModel:
         for quest_dict in db_data.get("quests", []):
             quest = QuestModel.from_dict(quest_dict)
             project.quests[quest.id] = quest
+            
+        for loc_dict in db_data.get("locations", []):
+            loc = LocationModel.from_dict(loc_dict)
+            project.locations[loc.id] = loc
 
         return project

@@ -1,5 +1,5 @@
 # src/engine/variable_store.py
-from typing import Any, Dict, Callable, List
+from typing import Any, Dict, Callable, List, Optional
 
 
 class VariableStore:
@@ -15,31 +15,33 @@ class VariableStore:
             "resistance": 0,
             "gold": 0,
             "inventory": {},
-            "equipped": {},
-            "companions": [],
-            "used_choices": [], # List of choice IDs
+            "player_coordinates": {"x": 0, "y": 0, "continent": "Eldaron"},
+            "visit_counts": {},
+            "node_text_overrides": {},
+            "used_choices": [],
             "active_quests": [],
-            "completed_quests": []
+            "completed_quests": [],
+            "equipped": {}
         }
 
-    def load_state(self, variables: Dict[str, Any]):
-        """Charge un état complet (ex: chargement de sauvegarde ou init projet)."""
-        self._variables = variables.copy()
-        
-        # Sanitize types
-        if not isinstance(self._variables.get("inventory"), dict):
-            self._variables["inventory"] = {}
-        if not isinstance(self._variables.get("equipped"), dict):
-            self._variables["equipped"] = {}
-        if not isinstance(self._variables.get("used_choices"), list):
-            self._variables["used_choices"] = []
+    def load_state(self, data: Dict[str, Any]):
+        """Charge l'état des variables depuis une sauvegarde ou un projet."""
+        if not data:
+            return
             
-        # On notifie tout le monde du rechargement complet
-        self.notify_all()
-
-    def get_all(self) -> Dict[str, Any]:
-        """Retourne une copie de toutes les variables."""
-        return self._variables.copy()
+        # Update known keys
+        for key, value in data.items():
+            self._variables[key] = value
+            
+        # Sanitize player_coordinates
+        coords = self._variables.get("player_coordinates")
+        if not isinstance(coords, dict):
+             self._variables["player_coordinates"] = {"x": 0, "y": 0, "continent": "Eldaron"}
+        else:
+             # Ensure keys exist
+             if "x" not in coords: coords["x"] = 0
+             if "y" not in coords: coords["y"] = 0
+             if "continent" not in coords: coords["continent"] = "Eldaron"
 
     def set_var(self, name: str, value: Any):
         """Définit ou met à jour une variable."""
@@ -51,6 +53,10 @@ class VariableStore:
     def get_var(self, name: str, default: Any = None) -> Any:
         """Récupère la valeur d'une variable."""
         return self._variables.get(name, default)
+        
+    def get_all(self) -> Dict[str, Any]:
+        """Retourne une copie de toutes les variables."""
+        return self._variables.copy()
 
     def add_observer(self, callback: Callable[[str, Any], None]):
         """Abonne une fonction aux changements de variables."""
@@ -167,3 +173,36 @@ class VariableStore:
         used = self.get_var("used_choices", [])
         if not isinstance(used, list): return False
         return choice_id in used
+
+    def set_node_text(self, node_id: str, text: str):
+        """Définit un texte de remplacement pour un nœud."""
+        overrides = self.get_var("node_text_overrides", {})
+        if not isinstance(overrides, dict): overrides = {}
+        else: overrides = overrides.copy()
+        
+        overrides[node_id] = text
+        self.set_var("node_text_overrides", overrides)
+
+    def get_node_text(self, node_id: str) -> Optional[str]:
+        """Récupère le texte de remplacement d'un nœud s'il existe."""
+        overrides = self.get_var("node_text_overrides", {})
+        if not isinstance(overrides, dict): return None
+        return overrides.get(node_id)
+
+    # --- Visit Counts ---
+
+    def increment_visit_count(self, node_id: str):
+        """Incrémente le compteur de visites pour un nœud."""
+        visits = self.get_var("visit_counts", {})
+        if not isinstance(visits, dict): visits = {}
+        else: visits = visits.copy()
+        
+        current = visits.get(node_id, 0)
+        visits[node_id] = current + 1
+        self.set_var("visit_counts", visits)
+        
+    def get_visit_count(self, node_id: str) -> int:
+        """Retourne le nombre de visites pour un nœud."""
+        visits = self.get_var("visit_counts", {})
+        if not isinstance(visits, dict): return 0
+        return visits.get(node_id, 0)

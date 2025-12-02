@@ -44,8 +44,8 @@ class FadeTextEdit(QTextEdit):
         self.anim.start()
         
         # Start Typewriter (Left to Right)
-        # Slower speed: 25ms per char
-        self.timer.start(25) 
+        # Faster speed: 10ms per char
+        self.timer.start(10) 
 
     def _step_typewriter(self):
         if self.current_char_index < len(self.full_text):

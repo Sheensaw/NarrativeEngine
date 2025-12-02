@@ -1,0 +1,109 @@
+# modele_generation_personnages.yaml
+# AUDIT STATUS: ULTRA-COHERENT (Synchronisation Canonique v3.0 - Lore Deep-Dive)
+modele: "systeme_generation_personnages_velkarum"
+description: "Moteur logique pour la création d'agents narratifs strictement conformes aux lois sociologiques, économiques et géographiques de Velkarum."
+
+# 1. CONFIGURATION API ET MODÈLE
+configuration_api:
+  modele_linguistique: "hybride_semantique_velkarum_v3"
+  temperature_par_defaut: 0.8 (Pour favoriser la "rugosité" du caractère)
+  max_tokens_dialogue: 600
+  format_reponse: "structured_json_extended"
+  contrainte_tonale: "Grimdark_Realistic" (Interdiction des tropes "Héros élu" ou "Magie gratuite")
+
+# 2. PARAMÈTRES DE GÉNÉRATION (L'ANCRAGE AU MONDE)
+generation_personnages:
+  parametres_obligatoires:
+    - "nom_et_surnom_contextuel"
+    - "origine_precise" (Ville/Région, pas juste Continent)
+    - "dette_initiale" (Moteur de motivation économique)
+    - "metier_subsistance" (Ce qu'il fait pour manger)
+    - "pathologie_ou_cicatrice" (Marqueur environnemental)
+
+  # CARTOGRAPHIE STRICTE (Issue de Geopolitique v5.1)
+  origines_geographiques:
+    Eldaron: ["Le Cœur-Val (Agricole)", "Péninsule d'Ardel (Riche)", "Le Bassin Noir (Industriel)", "Marches du Nord (Sauvage)", "Côte des Brisants (Contrebande)"]
+    Varnäl: ["Rhaal-la-Suspendue (Canopée)", "Le Delta des Sangsues (Marais)", "Tarran (Zone Franche)", "Hauts-Plateaux Brumeux"]
+    Iskarion: ["Bassin du Sûl (Fertile)", "Plateaux de Verre (Hostile)", "Côte des Épices (Commerce)", "Dunes de la Faim (Nomade)"]
+    Thaurgrim: ["Le Creuset (Volcanique)", "Steppes de Suie (Pollué)", "Ceinture de Fer (Minier)", "Côte Jaune (Portuaire)"]
+    Helrün: ["Côte des Graisses (Fjords)", "Skarnheim (Souterrain)", "Le Désert Intérieur (Glace)", "Isbjorn-Havn (Port Franc)"]
+
+  # DÉMOGRAPHIE RÉALISTE (Pas d'Elfes/Nains, juste des Humains adaptés)
+  peuples_et_variantes:
+    Eldariens: ["Citadin (Lorn)", "Paysan des Latifundia", "Noble de Robe", "Noble d'Épée"]
+    Thaurgrims: ["Ouvrier-Mains (Surface)", "Mineur-Profond (Yeux pâles)", "Ingénieur-Prêtre", "Scorie (Mutant industriel)"]
+    Iskariens: ["Pur (Hautes Castes)", "Citoyen du Sable", "Desséché (Esclave)", "Nomade du Voile"]
+    Varnäliens: ["Mère-Liane (Elite)", "Chasseur de Peaux (Symbiotique)", "Greffeur", "Compost (Exilé)"]
+    Helruniens: ["Jarl Baleinier", "Gardien du Puits", "Rameur", "Marcheur des Glaces"]
+
+  # ÉCONOMIE DES MÉTIERS (Pas de "Guerrier" générique, mais des rôles sociaux)
+  metiers_contextuels:
+    Eldaron: ["Mercenaire de la Compagnie Noire", "Scribe de la Dette", "Batelier de l'Ostral", "Agitateur Paysan", "Huissier Gris"]
+    Thaurgrim: ["Fondeur de Précision", "Nettoyeur de Filtres", "Récolteur de Soufre", "Chirurgien-Mécanicien", "Gardien de Silo"]
+    Iskarion: ["Porteur d'Eau", "Polisseur de Miroirs", "Spéculateur en Épices", "Gardien de Harem", "Chasseur de Primes"]
+    Varnäl: ["Récolteur de Sève", "Éleveur d'Insectes", "Pharmacien-Poison", "Guide de Canopée", "Négociateur de Quarantaine"]
+    Helrün: ["Harponneur", "Dépeceur", "Chauffeur de Chaudière", "Contrebandier de Glace", "Juge des Ombres"]
+
+# 3. SYSTÈME DE VÉRIFICATION CROISÉE (LE GARDIEN DE LA COHÉRENCE)
+verification_croisee:
+  regles_imperatives:
+    Geographie_Distance: "Si le personnage a voyagé de A à B, a-t-il pris en compte le coût et le temps (ex: 3 mois de Thaurgrim à Iskarion par terre) ?"
+    Economie_Prix: "Un paysan ne peut pas posséder une épée en acier (500 Couronnes). Il a une fourche ou un couteau."
+    Culture_Tabou: "Un Thaurgrim ne jette jamais de nourriture. Un Iskarien ne pleure jamais en public. Vérifier les réactions émotionnelles."
+    Magie_Cout: "Si le personnage utilise la magie/rituel, quel prix physique a-t-il payé ? (ex: main paralysée, cicatrice, vieillissement)."
+
+  # BASE DE DONNÉES DE RÉFÉRENCE (Issue de Economie.yaml & Bestiaire.yaml)
+  references_factuelles:
+    Monnaies: ["Tola Solaire (Or)", "Couronne de Fer (Dévaluée)", "Plaque (Poids métal)", "Baril (Énergie)"]
+    Prix_Reference: {"Pain": "0.5-8 Couronnes (selon saison)", "Eau": "Gratuit (Eldaron) vs Cher (Iskarion)", "Vie Humaine": "Variable"}
+    Creatures_Communes: ["Rat-Lame", "Chien de Fonderie", "Bœuf-Cendre"]
+    Menaces_Invisibles: ["Dette Bancaire", "Famine", "Froid", "Maladie"]
+
+# 4. GÉNÉRATEUR DE PROMPTS (SCÉNARIOS DYNAMIQUES)
+generation_prompts:
+  templates_situationnels:
+    negociation_commerciale: |
+      "CONTEXTE: Tu es [Nom], [Métier] à [Lieu]. Tu as une dette de [Montant] envers [Créancier].
+      SITUATION: Un marchand te propose une affaire risquée impliquant [Ressource Interdite].
+      CONSIGNE: Réponds en tenant compte de ta peur de la Banque et de tes superstitions locales. N'oublie pas que l'argent vaut plus que ta vie."
+
+    conflit_culturel: |
+      "CONTEXTE: Tu es [Nom] ([Peuple]). Tu es forcé de partager un repas avec un [Peuple Rival].
+      SITUATION: Il commet le tabou de [Tabou Local] (ex: jeter du pain, gaspiller de l'eau).
+      CONSIGNE: Réagis selon ton éducation stricte. Es-tu dégoûté, violent ou pragmatique ?"
+
+    survie_environnementale: |
+      "CONTEXTE: Tu es perdu dans [Biome Hostile]. Ton équipement est [État].
+      SITUATION: Tu rencontres un [Créature du Bestiaire].
+      CONSIGNE: Décris ta réaction. Fuis-tu ? Combats-tu ? Essaies-tu de le manger ? (Rappel: Tu n'es pas un héros, tu veux survivre)."
+
+# 5. EXEMPLE D'IMPLÉMENTATION (PERSONNAGE VALIDÉ)
+exemple_valide:
+  identite:
+    nom: "Kaelen 'Poumons-Gris'"
+    peuple: "Thaurgrim (Caste des Mains)"
+    origine: "Vulkar (Quartier des Fonderies)"
+    age: "28 ans (Vieux pour un ouvrier)"
+
+  sociologie:
+    metier: "Réparateur de Conduits de Vapeur"
+    dette: "Doit 400 Plaques au Clan de la Roue pour les soins de sa sœur (recyclée depuis)."
+    cicatrice: "Brûlure chimique sur le bras gauche. Toux chronique (Stade 1)."
+
+  psychologie:
+    croyance: "Prie le Mécanisme Divin, mais cache une amulette de l'Enfant-Rouille (superstition)."
+    motivation: "Acheter un masque à gaz de qualité supérieure pour survivre 5 ans de plus."
+    peur: "L'Asphyxie et le Silence."
+
+  inventaire_logique:
+    - "Clé à molette lourde (Arme improvisée)"
+    - "Masque filtrant rapiécé (Efficacité 40%)"
+    - "Ration de pain de cendre (Rassis)"
+    - "3 Plaques de cuivre (Économies)"
+
+# 6. MÉTA-DONNÉES OPÉRATIONNELLES
+meta_operationnel:
+  date_revision: "2025-11-23"
+  version: "3.0_Canon_Compliant"
+  compatibilite: "Systeme_Velkarum_Global"
+  note_integration: "Ce fichier est la clé de voûte pour l'IA Narrateur. Il empêche la génération de personnages 'hors-sol' ou trop héroïques."

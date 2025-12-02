@@ -15,7 +15,7 @@ class ScriptParser:
         # Regex pour trouver les motifs ${nom_variable}
         self.var_pattern = re.compile(r'\$\{([a-zA-Z0-9_]+)\}')
 
-    def parse_text(self, text: str) -> str:
+    def parse_text(self, text: str, extra_context: Dict[str, Any] = None) -> str:
         """
         Remplace les variables dans le texte.
         Ex: "Bonjour ${player_name}" -> "Bonjour Arthur"
@@ -25,12 +25,16 @@ class ScriptParser:
 
         def replacer(match):
             var_name = match.group(1)
+            # Check extra_context first
+            if extra_context and var_name in extra_context:
+                return str(extra_context[var_name])
+            
             val = self.store.get_var(var_name, f"ERR:{var_name}")
             return str(val)
 
         return self.var_pattern.sub(replacer, text)
 
-    def evaluate_condition(self, condition: str) -> bool:
+    def evaluate_condition(self, condition: str, extra_context: Dict[str, Any] = None) -> bool:
         """
         Évalue une expression conditionnelle (ex: "gold >= 10 and not is_dead").
         Retourne True ou False.
@@ -41,13 +45,27 @@ class ScriptParser:
         # On crée un contexte local contenant uniquement les variables du jeu
         # Cela permet d'utiliser "gold" directement au lieu de "variables['gold']"
         context = self.store.get_all()
+        
+        # Merge extra context (e.g. local variables like 'visits')
+        if extra_context:
+            context.update(extra_context)
 
         try:
+            # Pre-process condition to allow $variable syntax (replace $var with var)
+            # We use the same regex pattern but replace with group 1
+            # Note: var_pattern expects ${var}, but conditions usually use $var
+            # Let's handle both $var and ${var}
+            
+            # Replace ${var} -> var
+            clean_condition = re.sub(r'\$\{([a-zA-Z0-9_]+)\}', r'\1', condition)
+            # Replace $var -> var
+            clean_condition = re.sub(r'\$([a-zA-Z0-9_]+)', r'\1', clean_condition)
+
             # ATTENTION : eval() est puissant mais dangereux.
             # Ici, nous limitons le contexte aux seules variables du jeu.
             # Pour une sécurité totale en prod, il faudrait un parser custom,
             # mais pour un outil desktop créateur, eval restreint est acceptable.
-            result = eval(condition, {"__builtins__": {}}, context)
+            result = eval(clean_condition, {"__builtins__": {}}, context)
             return bool(result)
         except Exception as e:
             print(f"[ScriptParser] Erreur d'évaluation '{condition}': {e}")
@@ -102,7 +120,7 @@ class ScriptParser:
     def _dispatch_command(self, command: str, args: list):
         """Dispatche la commande textuelle vers la bonne action."""
         try:
-            if command == "setVariable":
+            if command == "setVariable" or command == "set":
                 if len(args) >= 2:
                     var_name = args[0]
                     value = self._parse_value(args[1])
@@ -136,59 +154,42 @@ class ScriptParser:
         except Exception as e:
             print(f"[ScriptParser] Erreur exécution commande '{command}': {e}")
 
-    def _dispatch_event(self, ev_type: str, params: dict):
+    def _dispatch_event(self, ev_type: str, params: Dict[str, Any]):
         """Dispatche l'événement structuré vers la bonne action."""
         try:
-            print(f"[ScriptParser] Dispatching event: {ev_type} with params: {params}")
+            if ev_type == "set" or ev_type == "set_variable":
+                var_name = params.get("name")
+                value = params.get("value")
+                if var_name:
+                    self.store.set_var(var_name, value)
             
-            if ev_type == "set":
-                var = params.get("variable")
-                val = params.get("value")
-                if var:
-                    self.store.set_var(var, val)
+            elif ev_type == "addItem" or ev_type == "add_item":
+                item_id = params.get("item_id")
+                qty = params.get("qty", params.get("quantity", 1))
+                if item_id:
+                    self.store.add_item(item_id, qty)
+            
+            elif ev_type == "removeItem" or ev_type == "remove_item":
+                item_id = params.get("item_id")
+                qty = params.get("qty", params.get("quantity", 1))
+                if item_id:
+                    self.store.remove_item(item_id, qty)
+            
+            elif ev_type == "startQuest" or ev_type == "start_quest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.start_quest(quest_id)
+            
+            elif ev_type == "completeQuest" or ev_type == "complete_quest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.complete_quest(quest_id)
                     
-            elif ev_type == "addItem":
-                item = params.get("item_id")
-                # Check 'quantity' then 'qty', default to 1
-                raw_qty = params.get("quantity") or params.get("qty") or 1
-                try:
-                    qty = int(raw_qty)
-                except:
-                    qty = 1
-                    
-                if item:
-                    self.store.add_item(item, qty)
-            
-            elif ev_type == "spawn":
-                pnj_id = params.get("pnjId")
-                x = params.get("x")
-                y = params.get("y")
-                print(f"[ScriptParser] Spawning NPC {pnj_id} at ({x}, {y})")
-                
-            elif ev_type == "movePnj":
-                pnj_id = params.get("pnjId")
-                target = params.get("targetPassage")
-                x = params.get("x")
-                y = params.get("y")
-                print(f"[ScriptParser] Moving NPC {pnj_id} to {target} at ({x}, {y})")
-                
-            elif ev_type == "setrelation":
-                pnj_id = params.get("pnjId")
-                val = params.get("value")
-                print(f"[ScriptParser] Setting relation for {pnj_id} to {val}")
-                
-            elif ev_type == "changemood":
-                pnj_id = params.get("pnjId")
-                val = params.get("value")
-                print(f"[ScriptParser] Changing mood for {pnj_id} to {val}")
-                
-            # Add other NPC macros here as needed
-            
             else:
-                print(f"[ScriptParser] Event inconnu ou non implémenté : {ev_type}")
-                
+                print(f"[ScriptParser] Événement inconnu : {ev_type}")
+
         except Exception as e:
-            print(f"[ScriptParser] Erreur exécution event '{ev_type}': {e}")
+            print(f"[ScriptParser] Erreur exécution événement '{ev_type}': {e}")
 
     def _parse_value(self, val_str: str) -> Any:
         """Tente de convertir une string en int/float/bool, sinon garde string."""

@@ -8,9 +8,10 @@ from PyQt6.QtCore import Qt, QRectF, QLineF
 from PyQt6.QtGui import QColor, QPen, QPainter
 
 from src.core.definitions import COLORS
-from src.core.models import ProjectModel, NodeModel
 from src.editor.graph.node_item import NodeItem
 from src.editor.graph.edge_item import EdgeItem
+from src.editor.graph.group_item import GroupItem
+from src.core.models import ProjectModel, NodeModel, GroupModel
 
 
 class NodeScene(QGraphicsScene):
@@ -50,18 +51,32 @@ class NodeScene(QGraphicsScene):
         self.node_map = {}
         self.edges = []
 
-        # 1. Créer les nœuds
+        # 1. Créer les groupes (Background)
+        for group_model in project.groups.values():
+            self.add_group_item(group_model)
+
+        # 2. Créer les nœuds
         for node_model in project.nodes.values():
             self.add_node_item(node_model)
 
         # 2. Créer les liens dynamiques
         self.refresh_connections()
+        
+        # 3. Mettre à jour les prévisualisations (pour résoudre les noms des cibles)
+        for item in self.node_map.values():
+            item.update_preview()
 
     def add_node_item(self, model: NodeModel):
         """Crée et ajoute un item de nœud."""
         item = NodeItem(model)
         self.addItem(item)
         self.node_map[model.id] = item
+        return item
+
+    def add_group_item(self, model: GroupModel):
+        """Crée et ajoute un item de groupe."""
+        item = GroupItem(model, self)
+        self.addItem(item)
         return item
 
     def refresh_connections(self):
@@ -124,6 +139,12 @@ class NodeScene(QGraphicsScene):
                 dst_item.add_edge(edge)
             
             processed_pairs.add(pair)
+            
+
+            
+        # 3. Update all node previews (to reflect potential title changes in targets)
+        for item in self.node_map.values():
+            item.update_preview()
             
         self.update()
 

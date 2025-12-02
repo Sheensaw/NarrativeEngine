@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
                              QLabel, QDoubleSpinBox, QCheckBox, QMessageBox, QSpinBox, QGroupBox, QFileDialog,
                              QTableWidget, QTableWidgetItem, QHeaderView, QTreeWidget, QTreeWidgetItem)
 from PyQt6.QtCore import Qt
-from src.core.models import ItemModel, QuestModel, ProjectModel
+from src.core.models import ItemModel, QuestModel, ProjectModel, LocationModel
 from src.core.database import DatabaseManager
 
 
@@ -27,7 +27,11 @@ class DatabasePanel(QWidget):
         self._sync_items_from_db()
         self._refresh_items_list()
         self._refresh_quests_list()
+        self._refresh_items_list()
+        self._refresh_quests_list()
         self._refresh_variables_list()
+        self._refresh_locations_list()
+        self._sync_locations_from_db()
 
     def _init_ui(self):
         self.layout = QVBoxLayout(self)
@@ -80,6 +84,10 @@ class DatabasePanel(QWidget):
         # Tab Variables
         self.tab_vars = self._create_variables_tab()
         self.tabs.addTab(self.tab_vars, "Variables")
+
+        # Tab Locations
+        self.tab_locations = self._create_locations_tab()
+        self.tabs.addTab(self.tab_locations, "Lieux")
 
     def _create_variables_tab(self):
         widget = QWidget()
@@ -661,3 +669,214 @@ class DatabasePanel(QWidget):
         current_list_item = self.quests_list.currentItem()
         if current_list_item:
             current_list_item.setText(quest.title)
+
+    # --- LOCATIONS LOGIC ---
+    def _create_locations_tab(self):
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Liste à gauche
+        list_layout = QVBoxLayout()
+        
+        # Bouton Import JSON (Optionnel, ou utiliser celui des items si générique)
+        # Pour l'instant, on garde simple
+        
+        self.locations_tree = QTreeWidget()
+        self.locations_tree.setHeaderHidden(True)
+        self.locations_tree.itemClicked.connect(self._on_location_selected)
+        list_layout.addWidget(self.locations_tree)
+
+        btn_layout = QHBoxLayout()
+        btn_add = QPushButton("Ajouter")
+        btn_add.clicked.connect(self._add_location)
+        btn_del = QPushButton("Supprimer")
+        btn_del.setObjectName("dangerBtn")
+        btn_del.clicked.connect(self._delete_location)
+        btn_layout.addWidget(btn_add)
+        btn_layout.addWidget(btn_del)
+        list_layout.addLayout(btn_layout)
+        
+        # Bouton Save to DB
+        btn_sync = QPushButton("Sauvegarder en DB")
+        btn_sync.setObjectName("successBtn")
+        btn_sync.setStyleSheet("margin-top: 5px;")
+        btn_sync.clicked.connect(self._save_locations_to_db)
+        list_layout.addWidget(btn_sync)
+
+        layout.addLayout(list_layout, 1)
+
+        # Formulaire à droite
+        self.location_form = QWidget()
+        form_layout = QFormLayout(self.location_form)
+
+        self.loc_place = QLineEdit()
+        self.loc_place.textChanged.connect(self._save_current_location)
+        
+        self.loc_city = QLineEdit()
+        self.loc_city.textChanged.connect(self._save_current_location)
+        
+        self.loc_continent = QComboBox()
+        self.loc_continent.addItems(["Eldaron", "Thaurgrim", "Iskarion", "Velkarum", "Varnal", "Helrun", "Unknown"])
+        self.loc_continent.setEditable(True)
+        self.loc_continent.currentTextChanged.connect(self._save_current_location)
+        
+        self.loc_type = QComboBox()
+        self.loc_type.addItems(["Ville", "Village", "Donjon", "Taverne", "Boutique", "Temple", "Autre"])
+        self.loc_type.setEditable(True)
+        self.loc_type.currentTextChanged.connect(self._save_current_location)
+        
+        self.loc_x = QDoubleSpinBox()
+        self.loc_x.setRange(-99999, 99999)
+        self.loc_x.valueChanged.connect(self._save_current_location)
+        
+        self.loc_y = QDoubleSpinBox()
+        self.loc_y.setRange(-99999, 99999)
+        self.loc_y.valueChanged.connect(self._save_current_location)
+
+        form_layout.addRow("Lieu (Place) :", self.loc_place)
+        form_layout.addRow("Ville (City) :", self.loc_city)
+        form_layout.addRow("Continent :", self.loc_continent)
+        form_layout.addRow("Type :", self.loc_type)
+        form_layout.addRow("Pos X :", self.loc_x)
+        form_layout.addRow("Pos Y :", self.loc_y)
+
+        layout.addWidget(self.location_form, 2)
+        self.location_form.setVisible(False)
+
+        self._refresh_locations_list()
+        return widget
+
+    def _refresh_locations_list(self):
+        self.locations_tree.clear()
+        if not self.project_model: return
+        
+        # Group by Type
+        locs_by_type = {}
+        for loc in self.project_model.locations.values():
+            ltype = loc.type or "Autre"
+            if ltype not in locs_by_type: locs_by_type[ltype] = []
+            locs_by_type[ltype].append(loc)
+            
+        # Create Tree Nodes
+        for ltype in sorted(locs_by_type.keys()):
+            type_node = QTreeWidgetItem(self.locations_tree)
+            type_node.setText(0, ltype)
+            type_node.setExpanded(True)
+            
+            # Sort by City then Place
+            sorted_locs = sorted(locs_by_type[ltype], key=lambda x: (x.city or "", x.place))
+            
+            for loc in sorted_locs:
+                loc_node = QTreeWidgetItem(type_node)
+                display = f"{loc.city} - {loc.place}" if loc.city else loc.place
+                loc_node.setText(0, display)
+                loc_node.setData(0, Qt.ItemDataRole.UserRole, loc.id)
+
+    def _add_location(self):
+        new_loc = LocationModel()
+        self.project_model.locations[new_loc.id] = new_loc
+        self._refresh_locations_list()
+
+    def _delete_location(self):
+        current = self.locations_tree.currentItem()
+        if not current or not current.parent(): return
+        
+        loc_id = current.data(0, Qt.ItemDataRole.UserRole)
+        if not loc_id: return
+        
+        reply = QMessageBox.question(self, "Confirmer", "Supprimer ce lieu ?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.No: return
+
+        if loc_id in self.project_model.locations:
+            del self.project_model.locations[loc_id]
+            
+        # Delete from DB & Sync JSON
+        self.db_manager.delete_location(loc_id)
+        
+        self._refresh_locations_list()
+        self.location_form.setVisible(False)
+
+    def _on_location_selected(self, item_node, column):
+        if not item_node.parent(): return
+        
+        loc_id = item_node.data(0, Qt.ItemDataRole.UserRole)
+        loc = self.project_model.locations.get(loc_id)
+        if not loc: return
+
+        self.current_loc_id = loc_id
+        self.location_form.setVisible(True)
+        
+        self.loc_place.blockSignals(True)
+        self.loc_city.blockSignals(True)
+        self.loc_continent.blockSignals(True)
+        self.loc_type.blockSignals(True)
+        self.loc_x.blockSignals(True)
+        self.loc_y.blockSignals(True)
+
+        self.loc_place.setText(loc.place)
+        self.loc_city.setText(loc.city)
+        self.loc_continent.setCurrentText(loc.continent)
+        self.loc_type.setCurrentText(loc.type)
+        self.loc_x.setValue(loc.coords.get("x", 0.0))
+        self.loc_y.setValue(loc.coords.get("y", 0.0))
+
+        self.loc_place.blockSignals(False)
+        self.loc_city.blockSignals(False)
+        self.loc_continent.blockSignals(False)
+        self.loc_type.blockSignals(False)
+        self.loc_x.blockSignals(False)
+        self.loc_y.blockSignals(False)
+
+    def _save_current_location(self):
+        if not hasattr(self, 'current_loc_id'): return
+        loc = self.project_model.locations.get(self.current_loc_id)
+        if not loc: return
+
+        loc.place = self.loc_place.text()
+        loc.city = self.loc_city.text()
+        loc.continent = self.loc_continent.currentText()
+        loc.type = self.loc_type.currentText()
+        loc.coords["x"] = self.loc_x.value()
+        loc.coords["y"] = self.loc_y.value()
+
+        # Update Tree Item Text
+        current_tree_item = self.locations_tree.currentItem()
+        if current_tree_item:
+            display = f"{loc.city} - {loc.place}" if loc.city else loc.place
+            current_tree_item.setText(0, display)
+            # If type changed, refresh list
+            if current_tree_item.parent().text(0) != loc.type:
+                self._refresh_locations_list()
+
+        # Auto-save to DB & Sync JSON
+        self.db_manager.save_location(loc.id, loc.place, loc.city, loc.coords, loc.type, loc.continent, loc.source_file)
+        
+        if loc.source_file:
+            self.db_manager.update_location_json_from_db(loc.source_file)
+
+    def _save_locations_to_db(self):
+        if not self.project_model: return
+        count = 0
+        for loc in self.project_model.locations.values():
+            self.db_manager.save_location(loc.id, loc.place, loc.city, loc.coords, loc.type, loc.continent, loc.source_file)
+            count += 1
+        QMessageBox.information(self, "Succès", f"{count} lieux sauvegardés.")
+
+    def _sync_locations_from_db(self):
+        if not self.project_model: return
+        db_locs = self.db_manager.get_all_locations()
+        for d in db_locs.values():
+            loc = LocationModel(
+                id=d["id"],
+                place=d["place"],
+                city=d.get("city", ""),
+                coords=d.get("coords", {"x": 0, "y": 0}),
+                type=d.get("type", "Autre"),
+                continent=d.get("continent", "Unknown"),
+                source_file=d.get("source_file", ""),
+                properties=d.get("data", {})
+            )
+            self.project_model.locations[loc.id] = loc
+        self._refresh_locations_list()

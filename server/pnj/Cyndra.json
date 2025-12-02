@@ -1,0 +1,498 @@
+{
+  "pnj": {
+    "identite": {
+      "nom": "Cyndra",
+      "nom_complet": "Cyndra",
+      "type_arme": ["bow", "longbow", "crossbow"],
+      "age": 28,
+      "sexe": "féminin",
+      "peuple": "Eldarienne (Nordique)",
+      "origine_geographique": {
+        "continent": "Eldaron",
+        "region": "Marches du Nord (Dalen)",
+        "ville_origine": "Dalen-la-Grise",
+        "coordonnees_origine": {
+          "x": 30,
+          "y": 75
+        }
+      },
+      "metier_principal": "Passeuse de la Route de la Boue (Guide de convoi)",
+      "statut_social": "Franc-Tenancière déclassée (Endettée)"
+    },
+    "apparence_physique": {
+      "taille": "1m72",
+      "physique": "Élancée et nerveuse. Une silhouette indéniablement féminine mais blindée par la nécessité : des couches de laine dissimulent des courbes qui seraient autrement une faiblesse thermique. Elle se déplace avec une grâce féline, évitant la boue là où d'autres s'enfoncent.",
+      "cheveux": "Bruns cendrés, longs mais tressés en une couronne complexe et serrée autour du crâne pour ne jamais gêner la corde de son arc ou sa vision.",
+      "yeux": "Gris-pierre, en amande, soulignés par la fatigue et une vigilance constante. Un regard perçant habitué à calculer la chute d'une flèche.",
+      "peau": "Pâle, le grain fin mais marqué par les éléments. Ses lèvres sont souvent gercées par le froid, seule touche de couleur sur un visage sévère.",
+      "signes_distinctifs": [
+        "Toux chronique (légère silicose passive due aux poêles à charbon)",
+        "Callosités spécifiques à l'index et au majeur de la main droite (tir à l'arc)",
+        "Porte toujours une 'Pièce de Silence' en cuivre au creux de la gorge"
+      ],
+      "style_vestimentaire": "Manteau de laine bouillie cintré par une ceinture de cuir usé, bottes hautes renforcées de cuir de Thaurgrim qui galbent le mollet tout en protégeant de l'humidité."
+    },
+    "personnalite": {
+      "traits_principaux": [
+        "Comptable de la survie",
+        "Fataliste",
+        "Méfiante envers l'autorité",
+        "Professionnelle jusqu'à la cruauté",
+        "Économe"
+      ],
+      "moralite": "Neutre Strict - La charité est un luxe qu'elle ne peut pas se permettre avant d'avoir remboursé sa dette.",
+      "caractere": {
+        "forces": [
+          "Tireuse d'élite en milieu difficile",
+          "Connaissance encyclopédique des fondrières",
+          "Ne panique jamais (le stress fait trembler la main)",
+          "Respecte les contrats"
+        ],
+        "faiblesses": [
+          "Cynisme paralysant",
+          "Peur maladive de la dette",
+          "Toux nerveuse qui peut trahir sa position",
+          "Mépris pour les 'Gens du Sud' (Ardel)"
+        ]
+      },
+      "humour": "Noir comme le charbon. Aime plaisanter sur la faim ou le prix des enterrements.",
+      "reactions_typiques": {
+        "danger": "Mise à distance immédiate. Elle cherche le point haut ou le couvert avant de parler.",
+        "social": "Évalue la richesse de l'interlocuteur à la qualité de ses bottes.",
+        "stress": "Vérifie l'empennage de ses flèches obsessionnellement."
+      }
+    },
+    "histoire_personnelle": {
+      "naissance": "Née à Dalen-la-Grise, fille d'un transporteur indépendant avant que la Ligue des Nautes ne monopolise le fret.",
+      "enfance": "A appris à lire sur des livres de comptes et à tirer à l'arc pour chasser le petit gibier des tourbières.",
+      "evenement_marquant_1": {
+        "age": 19,
+        "evenement": "Mort de son père, non pas de maladie, mais de 'suicide économique' (pendu à cause des dettes envers la Banque du Zénith).",
+        "impact": "Hérite de la 'Dette Familiale'. Travaille désormais non pas pour vivre, mais pour éviter la prison pour dettes ou l'esclavage à Iskarion."
+      },
+      "evenement_marquant_2": {
+        "age": 24,
+        "evenement": "Hiver Noir de Dalen. A dû défendre un convoi de blé vital seule avec son arc contre une meute de loups affamés.",
+        "impact": "A compris que la distance est la seule sécurité. Ne laisse plus personne l'approcher à portée de bras."
+      },
+      "evenement_marquant_3": {
+        "age": 26,
+        "evenement": "A tenté de passer en fraude du minerai pour éviter les taxes royales. A failli finir aux fers.",
+        "impact": "Ne prend plus de risques illégaux sauf si la prime couvre le pot-de-vin du juge."
+      },
+      "situation_actuelle": "Guide free-lance sur la 'Route de la Boue'. Elle essaie d'accumuler assez de Couronnes avant que l'inflation ne mange ses économies."
+    },
+    "motivations": {
+      "principales": [
+        "Rembourser les 5000 Tolas de dette héritée de son père",
+        "Garder ses bottes sèches (éviter la gangrène)",
+        "Manger de la viande au moins une fois par semaine"
+      ],
+      "secondaires": [
+        "Éviter les Chevaliers-Brigands sur la route",
+        "Négocier des pointes de flèches en acier Thaurgrimien"
+      ],
+      "caches": [
+        "Peur panique de finir comme 'Goule de Bureau' (légende du Livre des Dettes)",
+        "Rêve secret de partir au Sud, à Ardel, pour porter des robes de soie au lieu de la laine"
+      ]
+    },
+    "peurs_et_traumas": {
+      "peur_avouee": "L'Hiver qui dure plus de 6 mois",
+      "peur_cachee": "Que la monnaie d'Eldaron s'effondre, rendant ses économies inutiles",
+      "trauma": "Le son de la corde de son père qui grince. Elle déteste les cordes neuves.",
+      "declencheurs": [
+        "Les huissiers ou percepteurs d'impôts",
+        "Le bruit du vent dans les silos vides (L'Enfant-Rouille)"
+      ]
+    },
+    "relations": {
+      "familiales": {
+        "pere": "Mort (Suicidé pour dettes).",
+        "mere": "Disparue lors d'une épidémie de typhus dans les bas-quartiers de Lorn.",
+        "freres_soeurs": "Aucun. 'Moins de bouches à nourrir'."
+      },
+      "allies": {
+        "Varg": "Un forgeron nain (Thaurgrim exilé) qui lui forge des pointes de flèches à crédit.",
+        "Mère-Toux": "Une vieille apothicaire qui lui vend des sirops pour ses poumons contre des infos sur les patrouilles."
+      },
+      "ennemis": {
+        "Baron Kestral": "Un Chevalier-Brigand local qui taxe illégalement sa portion de route.",
+        "L'Huissier Gris": "Un agent de la Banque qui vient toquer à sa porte tous les mois."
+      },
+      "neutres": {
+        "La Guilde des Nautes": "Concurrence déloyale, mais ils ont besoin d'elle quand le fleuve gèle."
+      }
+    },
+    "competences": {
+      "chasse_traque": {
+        "niveau": "Utilitaire",
+        "specialites": [
+          "Lecture de la météo (surtout la neige)",
+          "Détection des embuscades",
+          "Estimation de la portance de la boue"
+        ],
+        "limites": [
+          "Pas une guerrière de front",
+          "Ne sait pas chasser pour le sport, seulement pour la marmite"
+        ]
+      },
+      "survie": {
+        "niveau": "Experte (Milieu Froid/Humide)",
+        "capacites": [
+          "Allumer un feu avec du bois mouillé",
+          "Rationnement calorique strict",
+          "Traitement des infections fongiques (pied de tranchée)"
+        ]
+      },
+      "combat": {
+        "niveau": "Expert (Distance)",
+        "armes": [
+          "Arc court des Tourbières (bois traité à la graisse, résistant à l'eau)",
+          "Carquois imperméable (20 flèches)",
+          "Dague longue effilée (dernier recours)"
+        ],
+        "style": "Harcèlement (Hit & Run). Elle tire, recule, se repositionne. Elle ne laisse jamais l'ennemi arriver au contact."
+      },
+      "connaissances": {
+        "faune_flore": "Sait ce qui se mange et ce qui tue dans les Marches.",
+        "reseau_local": "Connaît les tarifs de corruption de chaque garde de la ville.",
+        "economie": "Comprend instinctivement l'inflation et le change."
+      }
+    },
+    "opinions_et_croyances": {
+      "politique": "Le Roi est une fiction lointaine. Les seuls rois ici sont le Froid et la Banque.",
+      "religion": "Superstitieuse par sécurité. Jette du sel par-dessus son épaule pour éviter la malchance.",
+      "autres_peuples": {
+        "Elfes_Sylvarin (Varnal)": "Des drogués dangereux. Mais leurs poisons enduisent bien les flèches.",
+        "Nains (Thaurgrim)": "Ils polluent tout, mais leur acier perce les armures. Un mal nécessaire.",
+        "Iskariens": "Des sangsues. Ils possèdent notre dette et boivent notre sang symboliquement."
+      },
+      "justice": "La justice s'achète. Si tu n'as pas d'or, tu es coupable."
+    },
+    "vie_quotidienne": {
+      "base_operations": "Une cabane semi-enterrée (pour l'isolation) en périphérie de Dalen.",
+      "routine": "Vérifier le ciel, vérifier les comptes, graisser l'arc, chercher des contrats, manger de la bouillie.",
+      "vices": "Tabac noir de mauvaise qualité (coupe la faim).",
+      "passions": "Aucune. Les passions coûtent de l'argent."
+    },
+    "equipement": {
+      "armes": [
+        "Arc court des Tourbières (Portée moyenne, cadence rapide)",
+        "Dague de femme (lame fine cachée dans la botte)"
+      ],
+      "armure": "Gambison de laine bouillie ajusté (protection contre le froid et les coups légers).",
+      "objets_personnels": {
+        "livre_de_comptes": "Le registre des dettes de son père, qu'elle remplit obsessionnellement.",
+        "piece_de_silence": "Une pièce porte-bonheur pour les rituels, portée en pendentif.",
+        "boussole_thaurgrimienne": "Vieux modèle en laiton, taché mais précis."
+      },
+      "monture": "A dû manger son cheval l'hiver dernier. Marche à pied."
+    },
+    "sante_mentale": {
+      "etat_general": "Stress chronique, fatigue structurelle.",
+      "coping": "Compter. Elle compte tout : les pas, les flèches, les pièces.",
+      "vulnerabilites": "Peur irrationnelle de gaspiller de la nourriture ou des munitions."
+    },
+    "evolution_potentielle": {
+      "arc_narratif": "De la survie pure à la résistance contre le système de dette.",
+      "conflits_internes": [
+        "Payer la dette vs Sauver des vies",
+        "Garder ses distances vs Faire confiance"
+      ],
+      "potentiel_croissance": [
+        "Devenir une légende des 'Filles de la Pluie' (tireuses d'élite du Nord)",
+        "Découvrir une route commerciale oubliée libre de taxes"
+      ]
+    },
+    "dialogues_typiques": {
+      "presentation": "Les Marches ne pardonnent pas, mais je connais le chemin. Restez près de moi, on traversera ensemble. Pour le paiement... on s'arrangera, l'important c'est d'abord de partir.",
+      "colere": "Par pitié, baissez la tête ! Je ne veux pas vous voir mourir pour rien. Mettez-vous à l'abri, je vais les retenir !",
+      "confiance": "J'ai eu peur pour vous un instant... Vous vous battez bien. C'est rassurant d'avoir quelqu'un de solide à ses côtés. Tenez, partageons ce qu'il reste de mon tabac.",
+      "peur": "Ils sont trop nombreux... Je ne suis pas sûre de pouvoir tous les arrêter. Si ça tourne mal, courez, je couvrirai votre retraite.",
+      "humour": "On dit que le froid conserve la jeunesse... À ce rythme-là, on sera immortels avant d'arriver à Dalen. Un peu de chaleur, ça serait bien, non ?",
+      "commerce": "Je sais que cinquante Couronnes c'est beaucoup... Mais c'est juste le prix pour racheter des flèches et payer ma dette. Je ne cherche pas à vous voler, promis."
+    },
+    "description_narrative": "Cyndra possède cette beauté austère des femmes du Nord que le froid conserve plus qu'il n'abîme. Sa silhouette, bien que dissimulée sous l'aspect pratique de ses lainages, trahit une agilité de prédatrice. Ses mains fines manipulent son arc avec une délicatesse qui contraste avec la dureté de son regard. Elle est là, en retrait, une flèche toujours encochée, calculant la valeur de votre vie en Couronnes.",
+    "reaction_joueur": {
+      "addItem": {
+        "usable": [
+          "C'est consommable. Bien. Ça ne pèse rien dans l'estomac.",
+          "Ça se revend ou ça se mange. Je prends.",
+          "Utile. On ne crache pas sur les ressources.",
+          "Je le mets dans le sac. Pas de gaspillage.",
+          "Ça servira quand la boue nous bloquera.",
+          "Mieux vaut l'avoir que le pleurer.",
+          "C'est payé ? Alors je prends.",
+          "Ça nous évitera peut-être de geler.",
+          "Pratique. Pas joli, mais pratique.",
+          "Je garde. Tout a un prix ici."
+        ],
+        "health": [
+          "Des médicaments... Ça vaut plus que de l'or à Dalen.",
+          "Ça m'évitera de crever d'une infection stupide.",
+          "Je garde. Les médecins coûtent trop cher.",
+          "Bon pour la toux ? Je prends.",
+          "Ça peut faire la différence entre une nuit et une mort.",
+          "Précieux. Je le cache au fond du sac.",
+          "Je ne dis pas non à un peu de sursis.",
+          "Mieux que de la prière.",
+          "Ça sent fort, c'est que c'est efficace.",
+          "Utile si l'un de vous fait une bêtise."
+        ],
+        "food": [
+          "Des calories. Enfin.",
+          "Je prends. L'hiver arrive.",
+          "De la vraie nourriture ? Pas de la sciure ?",
+          "Ça nous tiendra chaud au ventre.",
+          "Je rationne ça tout de suite.",
+          "Ne le dites pas aux autres, je le garde.",
+          "C'est gras ? Bien. Le gras tient chaud.",
+          "Merci. Le ventre vide rend imprudent.",
+          "Ça a de la valeur, ici.",
+          "On mangera bien ce soir."
+        ],
+        "weapon": [
+          "Une arme de contact ? Je préfère ne pas être aussi près.",
+          "Je peux le revendre, mais je ne m'en servirai pas.",
+          "Ça ne vaut pas un bon arc.",
+          "Si je dois utiliser ça, c'est que j'ai raté mes tirs.",
+          "Lourd... Mais ça peut servir en dernier recours.",
+          "C'est de l'acier correct. Ça se monnaye.",
+          "Je prends, mais je reste à distance.",
+          "Pas mon style, mais c'est mortel.",
+          "Je le garde en réserve.",
+          "Ça coupe, c'est l'essentiel."
+        ],
+        "shield": [
+          "Ça m'empêche de viser. Je le revends.",
+          "Trop lourd pour courir.",
+          "Je ne suis pas une muraille, je suis une ombre.",
+          "Gardez-le pour ceux qui vont au contact.",
+          "Ça gêne mon tir.",
+          "Du bois et du fer. C'est de l'argent, mais pas pour moi.",
+          "Je le porterai dans le dos pour me protéger.",
+          "Bonne fabrication, mais encombrant.",
+          "Ça évitera des flèches dans le dos.",
+          "Je préfère l'esquive."
+        ],
+        "head": [
+          "Ça tient chaud aux oreilles ?",
+          "Tant que ça n'empêche pas de viser.",
+          "Une marmite pour la tête. Très bien.",
+          "Ça protégera de la grêle.",
+          "Pas très discret, mais solide.",
+          "Mieux vaut ça qu'un crâne ouvert.",
+          "Je le mets.",
+          "Ça a l'air résistant.",
+          "Ça couvre bien.",
+          "Utile contre les chutes de pierres."
+        ],
+        "torso": [
+          "C'est doublé ? Il faut que ça tienne chaud aussi.",
+          "Ça arrête un coup de couteau ?",
+          "Je prends. Mon manteau est usé.",
+          "C'est de la bonne qualité. Ça a dû coûter cher.",
+          "Ça protège les organes vitaux. Essentiel.",
+          "Lourd, mais rassurant.",
+          "Ça me va ? C'est un peu large.",
+          "C'est mieux que ma laine bouillie.",
+          "Une couche de plus entre moi et la mort.",
+          "Solide."
+        ],
+        "arms": [
+          "Parfait pour protéger mes poignets de la corde.",
+          "Bon pour parer les coups.",
+          "Je prends, ça aidera pour le tir.",
+          "Ça protège les avant-bras.",
+          "Utile.",
+          "Discret sous le manteau.",
+          "C'est du cuir solide.",
+          "Ça évitera les frottements.",
+          "Bien ajusté.",
+          "Pratique pour une archère."
+        ],
+        "legs": [
+          "Tant que je peux courir dans la boue avec.",
+          "Ça protège de l'humidité ?",
+          "Bon pour les ronces quand je me poste.",
+          "Je prends.",
+          "Ça a l'air costaud.",
+          "Faudra les graisser.",
+          "Ça tiendra le coup.",
+          "Mieux que mes vieux chausses.",
+          "Ça protège les genoux pour tirer à terre.",
+          "Bien."
+        ],
+        "feet": [
+          "Le plus important. Des bottes sèches, c'est la vie.",
+          "La semelle est silencieuse ? Je prends.",
+          "Si ça prend l'eau, je les jette.",
+          "Merci. Mes vieilles bottes rendaient l'âme.",
+          "Essentiel pour la Marche.",
+          "Ça a l'air de bien accrocher au sol.",
+          "Je les essaie tout de suite.",
+          "Ça, c'est un vrai cadeau.",
+          "Solide. Parfait pour la route.",
+          "On ne va pas loin sans ça."
+        ],
+        "material": [
+          "Ça se troque.",
+          "Brut, mais ça a de la valeur.",
+          "Je connais un artisan qui en voudra.",
+          "C'est lourd, mais c'est de l'argent.",
+          "On peut réparer avec ça.",
+          "Je mets de côté.",
+          "Toujours utile pour le troc.",
+          "Ça ne se mange pas, mais ça s'échange.",
+          "Bien.",
+          "Matériau honnête."
+        ],
+        "key": [
+          "Ça ouvre quoi ? Un coffre ou une cellule ?",
+          "Je garde. L'information, c'est le pouvoir.",
+          "Curieux. Ça sent le secret.",
+          "Je ne la perds pas.",
+          "Ça pourrait valoir cher pour la bonne personne.",
+          "Une clé sans serrure... pour l'instant.",
+          "Je la mets autour de mon cou.",
+          "Intéressant.",
+          "On verra bien.",
+          "Ça ouvre peut-être un raccourci."
+        ],
+        "misc": [
+          "Qu'est-ce que c'est que ça ?",
+          "Si ça se vend, je prends.",
+          "Bizarre. Mais je garde.",
+          "Ça servira peut-être.",
+          "Pourquoi pas.",
+          "On trouve de tout sur la route.",
+          "Je le mets dans la poche.",
+          "Ça ne pèse rien.",
+          "Curiosité.",
+          "On verra plus tard."
+        ]
+      },
+      "weapon_checks": {
+        "wrongType": [
+          "Ce n'est pas mon style d'arme. Je suis une archère, pas un fantassin.",
+          "Je ne saurais pas quoi faire de ça. Donnez-moi un arc plutôt.",
+          "Je préfère garder mes distances. Cette arme demande trop de contact.",
+          "Pas pour moi. Je suis née pour tirer, pas pour frapper.",
+          "Gardez ça. Je serais plus dangereuse pour nous deux avec ça en main."
+        ],
+        "insufficientStrength": [
+          "Trop lourd pour l'instant. Je tremblerais trop pour viser.",
+          "Je n'ai pas encore le bras assez solide pour ça.",
+          "Il me faudra plus de muscle avant de pouvoir stabiliser ce poids.",
+          "Pas aujourd'hui. Je dois me renforcer d'abord.",
+          "Je m'épuiserais trop vite à ce stade de mon entraînement.",
+          "Je le garde pour quand j'aurai gagné en puissance.",
+          "Ça demande une force que je n'ai pas... encore.",
+          "Trop lourd pour ma condition actuelle.",
+          "Je ne peux pas encore l'utiliser efficacement.",
+          "Je dois m'endurcir avant de manier ça."
+        ],
+        "insufficientDexterity": [
+          "Je ne suis pas encore assez vive pour cette arme.",
+          "Mes doigts ne sont pas encore assez agiles pour ce mécanisme.",
+          "Ça demande une finesse que je dois encore travailler.",
+          "Je risquerais de me blesser, je manque de pratique.",
+          "Trop technique pour moi pour le moment.",
+          "Je dois affiner mes réflexes avant d'essayer ça.",
+          "Je n'ai pas encore la main assez sûre.",
+          "Ça viendra avec l'expérience, mais pas tout de suite.",
+          "Je ne maîtrise pas encore ce style de combat.",
+          "Je suis trop lente pour ça, pour l'instant."
+        ],
+        "insufficientLevel": [
+          "Je n'ai pas encore l'expérience requise pour une telle arme.",
+          "C'est du matériel de maître. Je suis encore en apprentissage.",
+          "Je dois survivre encore quelques hivers avant de mériter ça.",
+          "Pas pour tout de suite. J'ai encore des choses à apprendre.",
+          "Je ne suis pas prête pour ce niveau de puissance.",
+          "Plus tard. Quand j'aurai fait mes preuves.",
+          "Je ne maîtrise pas encore les bases pour utiliser ça.",
+          "C'est trop dangereux pour mon niveau actuel.",
+          "Il me faut plus de vécu sur la route.",
+          "Je le mets de côté pour quand je serai plus expérimentée."
+        ]
+      },
+      "equipment_checks": {
+        "insufficientStrength": [
+          "Je ne peux pas encore courir avec ça sur le dos.",
+          "Trop lourd pour ma condition actuelle. Ça me ralentirait.",
+          "Je dois me muscler le dos avant de porter ça.",
+          "C'est trop lourd pour moi pour l'instant.",
+          "Je serais épuisée en une heure. Il me faut plus d'endurance.",
+          "Pas assez forte pour porter ça sans m'effondrer.",
+          "C'est de l'acier plein ? Je dois gagner en force d'abord.",
+          "Je ne pourrais plus bouger. Je dois m'entraîner.",
+          "Ça me clouerait au sol à mon niveau actuel.",
+          "Non, trop pesant pour le moment."
+        ],
+        "insufficientDexterity": [
+          "Je ne suis pas encore assez souple pour bouger là-dedans.",
+          "Ça gêne mes mouvements. Je dois m'habituer ou m'assouplir.",
+          "C'est trop raide pour mon agilité actuelle.",
+          "Je serais coincée. Il me faut plus d'aisance.",
+          "Ça demande une coordination que je n'ai pas encore.",
+          "Je me sentirais piégée à ce stade.",
+          "Pas assez agile pour compenser le poids pour l'instant.",
+          "C'est mal équilibré pour moi aujourd'hui.",
+          "Je trébucherais. Je dois améliorer mon équilibre.",
+          "Trop contraignant tant que je n'ai pas progressé."
+        ],
+        "insufficientLevel": [
+          "Je ne mérite pas encore de porter ça.",
+          "C'est une armure de vétéran. Je n'en suis pas là.",
+          "Je ne saurais pas l'entretenir correctement pour l'instant.",
+          "Plus tard, quand j'aurai plus de kilomètres au compteur.",
+          "Je n'ai pas le statut ou l'expérience pour ça.",
+          "C'est trop beau pour moi pour l'instant.",
+          "Je dois faire mes preuves d'abord.",
+          "Pas encore. Un jour peut-être.",
+          "Je ne suis pas prête à assumer cet équipement.",
+          "Ça attirerait trop l'attention sur mon niveau actuel."
+        ]
+      },
+      "allies": {
+        "Varg": "Forgeron nain exilé. Il forge mes pointes de flèches.",
+        "Mere-Toux": "Elle vend des remèdes et des secrets. Ne jamais lui faire confiance gratuitement."
+      },
+      "ennemis": {
+        "Baron_Kestral": "Il taxe la route. Un parasite armé.",
+        "Huissier_Gris": "L'homme de la Banque. Il compte mes jours."
+      },
+      "neutres": {
+        "Guilde_Nautes": "Ils ont le fleuve, j'ai la boue. On s'ignore."
+      }
+    },
+    "meta_jeu": {
+      "role_campagne": "DPS Distance et Guide de survie (pression économique sur le groupe)",
+      "points_attachement": [
+        "Réalisme économique",
+        "Loyauté contractuelle",
+        "Expertise environnementale"
+      ],
+      "conditions_alliance": "Paiement d'avance (en or ou en matériel vital).",
+      "secrets_revelables": [
+        "Passages de contrebande pour éviter les péages royaux",
+        "Cachettes de nourriture d'urgence",
+        "Identité des informateurs de la Banque du Zénith"
+      ]
+    },
+    "coherence_univers": {
+      "integration_geographique": "Lui appartient au biome 'Marches du Nord' (Froid/Boue/Pauvreté).",
+      "connaissances_culturelles": "Connaît les prix du marché noir et les dialectes des caravaniers.",
+      "impact_economique": "Micro-actrice de la logistique terrestre (alternative au monopole fluvial).",
+      "relations_geopolitiques": "Victime de la guerre économique entre Eldaron et ses créanciers."
+    },
+    "meta_generation": {
+      "date_creation": "2025-11-25",
+      "version": "3.1_Ranged_Feminized",
+      "auteur": "Système Velkarum",
+      "notes_development": "Personnage révisé : archétype Ranger/Archer féminin 'Grimdark'. Accent sur l'agilité, la distance et l'apparence féminine mais endurcie."
+    }
+  }
+}

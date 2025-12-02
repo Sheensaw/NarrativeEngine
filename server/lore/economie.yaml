@@ -1,0 +1,189 @@
+# economie.yaml
+# AUDIT STATUS: ULTRA-COHERENT (Version 3.0 - Fusion Intégrale Lore & Mécanique)
+modele: "low_fantasy_grim_realistic_economics"
+description: "Système économique intégral de Velkarum. Fusionne la narration géopolitique avec une mécanique de taux de change, d'inflation et d'échelles de valeur rigoureuses."
+
+# 1. EMBEDDING SOMBRE & PHILOSOPHIE
+# -----------------------------------------------------------------------------
+embedding_optimized:
+  themes: ["interdépendance_critique", "capitalisme_prédateur", "famine_logistique", "dette_souveraine", "monopoles_naturels"]
+  mots_cles: ["lettre_de_change", "inflation_calorique", "guerre_des_prix", "usure_bancaire", "servage_pour_dette"]
+  description_semantique: "L'argent est le véritable dieu de ce monde. Les royaumes ne s'effondrent pas à cause des dragons, mais parce qu'ils ne peuvent plus payer les intérêts de leurs emprunts aux banques d'Iskarion. La pauvreté n'est pas un accident, c'est un outil de contrôle social."
+
+principes_fondamentaux:
+  - "La Calorie est la vraie monnaie : L'Or ne se mange pas, le Fer ne chauffe pas. Tout prix final se ramène au coût de survie immediate."
+  - "La Dette est une arme de siège : Iskarion ne conquiert pas les villes avec des soldats, mais en montant les taux d'intérêt."
+  - "La Rareté Logistique : Un objet vaut 10x son prix s'il a dû traverser le Détroit du Fer ou le Désert sans être volé."
+
+# 2. SYSTÈME MONÉTAIRE MONDIAL (LES 5 DEVISES)
+# -----------------------------------------------------------------------------
+monnaies_mondiales:
+  - nom: "Le Tola Solaire (Iskarion)"
+    code: "TOL"
+    type: "Étalon-Or (Réserve Mondiale)"
+    description: "Pièce d'or pur octogonale, frappée par le clergé. Inaltérable. Falsifier un Tola est une hérésie punie par le plomb fondu."
+    statut: "Monnaie de référence (Safe Haven). Utilisée pour les dots royales, les rançons, et l'achat d'esclaves de luxe."
+    stabilite: "Absolue. Elle ne perd jamais de valeur."
+
+  - nom: "La Couronne de Fer (Eldaron)"
+    code: "CRN"
+    type: "Monnaie Fiat Dévaluée (Argent/Cuivre)"
+    description: "Pièce ronde dont la teneur en argent baisse à chaque guerre. Une 'Vielle Couronne' (avant-guerre) vaut 3 'Nouvelles Couronnes'."
+    statut: "Monnaie du peuple et du commerce courant. Sujette à une hyper-inflation galopante (le prix du pain change matin et soir)."
+    stabilite: "Faible. Perd environ 10% de pouvoir d'achat par an."
+
+  - nom: "La Plaque Industrielle (Thaurgrim)"
+    code: "PLQ"
+    type: "Monnaie-Marchandise (Poids)"
+    description: "Carrés de métal industriel standardisé (100g d'acier ou de fer). Pas de visage de roi, juste le sceau de la Fonderie et le poids."
+    statut: "Monnaie des ouvriers. On ne la dépense pas, on la troque au poids. Elle a une utilité intrinsèque (on peut la fondre pour en faire un outil)."
+    stabilite: "Forte (Indexée sur le cours mondial des métaux)."
+
+  - nom: "Le Baril-Standard (Helrün)"
+    code: "BRL"
+    type: "Étalon-Énergie (Huile)"
+    description: "Titre de propriété sur un baril d'huile de baleine (150 litres) stocké à Nerr. Au Nord, l'or ne vaut rien s'il ne peut pas être brûlé pour se chauffer."
+    statut: "Monnaie saisonnière. Sert de référence pour les contrats d'éclairage urbain du monde entier."
+    stabilite: "Volatile (Vaut une fortune en hiver, s'effondre en été)."
+
+  - nom: "La Graine Noire (Varnäl)"
+    code: "GRN"
+    type: "Monnaie Biologique (Opium/Poison)"
+    description: "Une capsule de pavot noir scellée dans de la cire. Contient une dose pure."
+    statut: "Monnaie de l'ombre et de la contrebande. Une Graine peut acheter le silence d'un garde ou soulager une amputation."
+    stabilite: "Inélastique (La demande pour l'oubli et l'anti-douleur ne baisse jamais)."
+
+# 3. MATRICE DE CHANGE (FOREX & CROSS-RATES)
+# -----------------------------------------------------------------------------
+# Base de référence : 1 Tola (Or) = Le standard de richesse
+taux_de_change_moyen:
+  TOL_vs_CRN: "1 Tola = 25 Couronnes (Taux Officiel) / 40 Couronnes (Marché Noir/Changeurs de rue)"
+  TOL_vs_PLQ: "1 Tola = 100 Plaques d'Acier (soit 10kg de métal utile)"
+  TOL_vs_BRL: "1 Tola = 2 Barils d'Huile (Été) / 0.5 Baril (Hiver rude)"
+  TOL_vs_GRN: "1 Tola = 5 Graines Noires (La drogue raffinée vaut plus cher que l'acier)"
+
+  exemples_pratiques_RP:
+    La_Biere: "0.2 CRN (Eldaron) vs 0.01 PLQ (Thaurgrim) vs Gratuit mais mortel (Varnäl)"
+    L_Epee_Soldat: "500 CRN = 20 PLQ + Main d'œuvre"
+    La_Vie_Serf: "Dette de 100 CRN = 4 Tolas = 20 Graines Noires"
+
+# 4. ÉCONOMIE AUX DIFFÉRENTES ÉCHELLES
+# -----------------------------------------------------------------------------
+echelle_micro:
+  acteur: "Le Paysan / L'Ouvrier"
+  preoccupation: "Survie Calorique Immediate"
+  donnee_cle: "Le Panier de la Ménagère"
+  details:
+    - "Salaire moyen : 2 Couronnes/jour (Eldaron), 3 Plaques/jour (Thaurgrim)."
+    - "Coût de survie : 1.5 Couronne/jour (Pain + Taxe + Toit)."
+    - "Marge : Quasi-nulle. La moindre maladie force à emprunter, déclenchant la spirale de servitude."
+
+echelle_meso:
+  acteur: "Le Marchand / Le Capitaine Mercenaire / La Guilde"
+  preoccupation: "Marge Commerciale vs Risque Logistique"
+  donnee_cle: "Le Multiplicateur de Distance"
+  details:
+    - "Une épée fabriquée à Thaurgrim coûte 20 Plaques."
+    - "Vendue à Eldaron, elle vaut 500 Couronnes (soit ~25 Plaques)."
+    - "Profit brut : 25%. Mais il faut déduire : 10% Péage, 5% Corruption, 5% Risque perte."
+    - "C'est sur ces marges fines que se bâtissent les fortunes bourgeoises d'Ardel."
+
+echelle_macro:
+  acteur: "Le Roi / Le Synode / Le Jarl"
+  preoccupation: "Dette Souveraine vs Puissance Militaire"
+  donnee_cle: "Le Taux d'Intérêt Directeur (Fixé par Iskarion)"
+  details:
+    - "Eldaron doit 12 Millions de Tolas à Iskarion."
+    - "Intérêts annuels (5%) = 600,000 Tolas."
+    - "Revenu annuel du Royaume (Impôts) = 550,000 Tolas."
+    - "Déficit structurel. Eldaron doit emprunter pour payer les intérêts. C'est un piège mathématique sans issue autre que la guerre ou la faillite."
+
+# 5. INDICES DES PRIX & COÛT DE LA VIE
+# -----------------------------------------------------------------------------
+cout_de_la_vie:
+  pain_1kg:
+    Eldaron (Été): "0.5 CRN (Abordable - Temps des moissons)"
+    Eldaron (Hiver): "4 CRN (Famine des pauvres - Soudure)"
+    Thaurgrim: "8 CRN (Luxe importé, les ouvriers mangent de la pâte fongique)"
+    Iskarion: "3 CRN (Subventionné pour les citoyens, 10 pour les étrangers)"
+
+  eau_1L:
+    Eldaron: "Gratuit (Puits/Rivière)"
+    Iskarion: "0.1 TOL / 2 CRN (Plus cher que le vin médiocre). Rationnée strictement."
+    Thaurgrim: "1 CRN (L'eau gratuite est toxique/acide)."
+
+  vie_humaine (Esclave de labeur):
+    Thaurgrim: "50 PLQ (Moins cher qu'une bonne pelle). L'homme est jetable."
+    Iskarion: "200 TOL (Cher, symbole de statut. Un esclave qui boit est un investissement lourd)."
+    Eldaron: "Illégal (Mais racheter la 'Dette' d'un serf coûte ~100 CRN)."
+
+  equipement_et_services:
+    Nuit_Auberge_Sale: "1 CRN"
+    Passage_Bateau_Eldaron: "5 CRN"
+    Soins_Medecin_Varnal: "2 GRN (Ou un service en nature dangereux)"
+    Assassinat_Noble: "500 TOL + Frais"
+    Armure_Complete_Noble: "50 TOL (Le prix d'un hameau entier)"
+
+# 6. INSTITUTIONS FINANCIÈRES (LES MAÎTRES DU JEU)
+# -----------------------------------------------------------------------------
+banques_et_guildes:
+  - nom: "La Banque du Zénith (Siège : Asuren)"
+    type: "Créancier Mondial"
+    pouvoir: "Détient la dette souveraine d'Eldaron. Peut déclencher une famine en refusant une lettre de crédit pour l'achat de semences."
+    bras_arme: "Les Huissiers Gris (Assassins-Comptables qui 'liquident' les mauvais payeurs et saisissent les actifs)."
+
+  - nom: "La Ligue des Nautes (Siège : Lirn)"
+    type: "Cartel Logistique"
+    monopole: "Contrôle 80% du fret maritime. Ils décident qui mange et qui a faim en fixant les tarifs du transport."
+    methode: "Le 'Blocus Silencieux'. Si une ville taxe trop les navires, plus aucun bateau n'accoste. La ville meurt en 2 mois."
+
+  - nom: "Le Consortium du Fer (Siège : Vulkar)"
+    type: "Syndicat Industriel"
+    fonction: "Fixe les quotas de production d'acier. Vend des armes aux deux camps de chaque guerre pour maximiser les profits."
+
+# 7. FLUX COMMERCIAUX & LOGISTIQUE
+# -----------------------------------------------------------------------------
+chaines_valeur:
+  - nom: "Le Cycle de la Faim (Eldaron -> Thaurgrim)"
+    flux: "Blé contre Engrais/Acier."
+    risque: "Symbiose toxique. Si le flux s'arrête, double famine immédiate."
+
+  - nom: "Le Cycle du Froid (Helrün -> Iskarion)"
+    flux: "Glace Noire contre Or."
+    risque: "Vital pour Iskarion. Sans glace, les stocks de médicaments pourrissent en 3 jours."
+
+  - nom: "Le Cycle de la Douleur (Varnäl -> Monde)"
+    flux: "Opium/Poisons contre Or/Verre."
+    risque: "Monopole absolu. L'addiction de la noblesse mondiale assure une demande inélastique."
+
+logistique_transport:
+  cout_transport: "Le transport terrestre double le prix d'une marchandise tous les 300km (taxes, gardes, pertes). Le maritime est 10x moins cher."
+  pertes_moyennes: "20% des cargaisons sont perdues (Pirates, Tempêtes, Monstres). C'est intégré dans le prix de vente."
+  assurance: "Seule la Ligue des Nautes assure les cargaisons. Taux usuraire : 30% de la valeur déclarée."
+
+# 8. SCÉNARIOS DE CRISE (STRESS-TESTS ÉCONOMIQUES)
+# -----------------------------------------------------------------------------
+scenarios_catastrophe:
+  - nom: "L'Inflation du Charbon"
+    cause: "Grève ou effondrement minier à Thaurgrim."
+    effet: "Le prix du chauffage triple à Eldaron. Les pauvres brûlent leurs meubles puis leurs maisons. Le cours de la Plaque (PLQ) explose."
+
+  - nom: "La Panique des Tulipes Noires"
+    cause: "Spéculation sur un remède miracle venant de Varnäl."
+    effet: "Bulle financière. Ruine de la classe marchande d'Ardel. Suicide de masse des banquiers. La Graine Noire (GRN) se raréfie."
+
+  - nom: "La Crise de Liquidité Royale"
+    cause: "Le Roi d'Eldaron ne peut plus payer les mercenaires."
+    effet: "Pillage interne ('Se payer sur la bête'). La Couronne (CRN) perd 50% de sa valeur en une semaine."
+
+  - nom: "Hiver Long / Blocus des Glaces"
+    cause: "Tempête perpétuelle au Nord."
+    effet: "Le Baril (BRL) devient la seule monnaie refuge. Tout le monde vend ses Couronnes pour acheter de l'Huile et survivre."
+
+# 9. MÉTA-DONNÉES IA
+# -----------------------------------------------------------------------------
+meta_ia:
+  date_creation: "2025-11-25"
+  version: "3.0_definitive_merged"
+  type_contenu: "systeme_economique_complet"
+  note_intention: "Version finale unifiée. Combine le lore riche de la v1 avec la mécanique précise de la v2. L'économie est désormais jouable et narrativement cohérente."

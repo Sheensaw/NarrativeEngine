@@ -1,15 +1,56 @@
-# src/editor/panels/inspector.py
+
+
 import sys
 import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QComboBox, QPushButton, 
-    QScrollArea, QFrame, QCheckBox, QSpinBox, QFormLayout, QGroupBox
+    QScrollArea, QFrame, QCheckBox, QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
+    QTabWidget, QToolButton, QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation
 
 from src.editor.graph.node_item import NodeItem
 from src.core.definitions import MACRO_DEFINITIONS
+
+
+class CollapsibleBox(QWidget):
+    def __init__(self, title="", parent=None):
+        super().__init__(parent)
+        self.toggle_button = QToolButton(text=title, checkable=True, checked=False)
+        self.toggle_button.setStyleSheet("QToolButton { border: none; background-color: #444; color: #eee; padding: 5px; text-align: left; font-weight: bold; } QToolButton:hover { background-color: #555; }")
+        self.toggle_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.toggle_button.setArrowType(Qt.ArrowType.RightArrow)
+        self.toggle_button.clicked.connect(self.on_pressed)
+
+        self.content_area = QWidget()
+        self.content_area.setMaximumHeight(0)
+        self.content_area.setMinimumHeight(0)
+        self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        lay = QVBoxLayout(self)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self.toggle_button)
+        lay.addWidget(self.content_area)
+
+        self.animation = QPropertyAnimation(self.content_area, b"maximumHeight")
+        self.animation.setDuration(300)
+        self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
+    def on_pressed(self):
+        checked = self.toggle_button.isChecked()
+        self.toggle_button.setArrowType(Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow)
+        self.animation.setDirection(QAbstractAnimation.Direction.Forward if checked else QAbstractAnimation.Direction.Backward)
+        self.animation.setStartValue(0)
+        self.animation.setEndValue(self.content_area.layout().sizeHint().height())
+        self.animation.start()
+
+    def setContentLayout(self, layout):
+        old_layout = self.content_area.layout()
+        if old_layout:
+            QWidget().setLayout(old_layout)
+        self.content_area.setLayout(layout)
 
 
 class MacroEditorWidget(QWidget):
@@ -164,11 +205,9 @@ class EventItemWidget(QFrame):
         label_text = MACRO_DEFINITIONS.get(macro_type, {}).get("label", macro_type)
         
         lbl_type = QLabel(f"<b>{label_text}</b>")
-        lbl_type.setStyleSheet("color: #ddd;")
         header_layout.addWidget(lbl_type)
         
-        header_layout.addStretch()
-        
+        # Remove button
         btn_remove = QPushButton("X")
         btn_remove.setFixedSize(20, 20)
         btn_remove.setStyleSheet("background-color: #d9534f; color: white; border: none; border-radius: 3px;")
@@ -177,11 +216,17 @@ class EventItemWidget(QFrame):
         
         layout.addLayout(header_layout)
         
-        # Body (Macro Editor)
+        # Body (Collapsible)
+        self.collapsible = CollapsibleBox("Paramètres")
+        body_layout = QVBoxLayout()
+        
         self.macro_editor = MacroEditorWidget(project=self.project)
-        self.macro_editor.set_macro_type(macro_type, event_data.get('parameters', {}))
+        self.macro_editor.set_macro_type(macro_type, event_data.get("parameters", {}))
         self.macro_editor.data_changed.connect(self.on_params_changed)
-        layout.addWidget(self.macro_editor)
+        body_layout.addWidget(self.macro_editor)
+        
+        self.collapsible.setContentLayout(body_layout)
+        layout.addWidget(self.collapsible)
 
     def remove_self(self):
         self.removed.emit()
@@ -248,9 +293,10 @@ class EventEditorWidget(QWidget):
     def refresh_list(self):
         # Clear existing items
         while self.container_layout.count():
-            child = self.container_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            item = self.container_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
         
         for ev in self.events:
             self._create_event_widget(ev)
@@ -288,104 +334,180 @@ class ChoiceItemWidget(QFrame):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         
-        # Compact Layout
-        # Row 1: Text | Target | Remove
-        row1 = QHBoxLayout()
+        # Header (Text + Remove)
+        header_layout = QHBoxLayout()
         
         self.inp_text = QLineEdit(choice_data.get("text", ""))
         self.inp_text.setPlaceholderText("Texte du choix...")
         self.inp_text.textChanged.connect(self.on_change)
-        row1.addWidget(self.inp_text, 2)
-        
-        self.combo_target = QComboBox()
-        self.combo_target.setEditable(True)
-        self.combo_target.addItem("", "")
-        if self.project:
-            for node in self.project.nodes.values():
-                self.combo_target.addItem(node.title, node.id)
-        
-        # Set current target
-        target_id = choice_data.get("target_node_id", "")
-        idx = self.combo_target.findData(target_id)
-        if idx >= 0:
-            self.combo_target.setCurrentIndex(idx)
-        else:
-            self.combo_target.setEditText(target_id)
-            
-        self.combo_target.currentIndexChanged.connect(self.on_target_changed)
-        self.combo_target.editTextChanged.connect(self.on_target_text_changed)
-        row1.addWidget(self.combo_target, 2)
+        header_layout.addWidget(self.inp_text, 2)
         
         btn_remove = QPushButton("X")
         btn_remove.setFixedSize(20, 20)
         btn_remove.setStyleSheet("background-color: #d9534f; color: white; border: none; border-radius: 3px;")
         btn_remove.clicked.connect(self.remove_self)
-        row1.addWidget(btn_remove)
+        header_layout.addWidget(btn_remove)
         
-        layout.addLayout(row1)
-        
-        # Row 2: Condition | One-Shot | After Use
-        row2 = QHBoxLayout()
-        
-        self.inp_cond = QLineEdit(choice_data.get("condition", ""))
-        self.inp_cond.setPlaceholderText("Condition (ex: gold >= 10)")
-        self.inp_cond.textChanged.connect(self.on_change)
-        row2.addWidget(self.inp_cond)
-        
-        self.chk_oneshot = QCheckBox("Unique")
-        self.chk_oneshot.setChecked(choice_data.get("is_one_shot", False))
-        self.chk_oneshot.stateChanged.connect(self.on_oneshot_changed)
-        row2.addWidget(self.chk_oneshot)
-        
-        self.combo_after = QComboBox()
-        self.combo_after.addItems(["Disparaître", "Remplacer"])
-        current_after = choice_data.get("after_use", "delete")
-        self.combo_after.setCurrentIndex(0 if current_after == "delete" else 1)
-        self.combo_after.currentIndexChanged.connect(self.on_after_changed)
-        # Only visible if oneshot is checked
-        self.combo_after.setVisible(self.chk_oneshot.isChecked())
-        row2.addWidget(self.combo_after)
-        
-        layout.addLayout(row2)
-        
-        # Event Editor (Collapsible or just below)
-        self.event_editor = EventEditorWidget("Événements")
-        self.event_editor.set_events(choice_data.get("events", []), project=self.project)
-        self.event_editor.data_changed.connect(self.on_events_changed)
-        layout.addWidget(self.event_editor)
+        layout.addLayout(header_layout)
 
-    def remove_self(self):
-        self.removed.emit()
-        self.deleteLater()
+        # Body (Collapsible)
+        self.collapsible = CollapsibleBox("Détails")
+        body_layout = QVBoxLayout()
+        
+        # Target
+        row_target = QHBoxLayout()
+        row_target.addWidget(QLabel("Cible:"))
+        self.combo_target = QComboBox()
+        self.combo_target.setEditable(True)
+        self.combo_target.addItem("", "")
+        if self.project:
+            for node in self.project.nodes.values():
+                self.combo_target.addItem(f"{node.title} ({node.id})", node.id)
+        
+        current_target = choice_data.get("target_node_id", "")
+        idx = self.combo_target.findData(current_target)
+        if idx >= 0:
+            self.combo_target.setCurrentIndex(idx)
+        self.combo_target.currentIndexChanged.connect(self.on_change)
+        row_target.addWidget(self.combo_target)
+        body_layout.addLayout(row_target)
+        
+        # Condition
+        row_cond = QHBoxLayout()
+        row_cond.addWidget(QLabel("Condition:"))
+        self.inp_condition = QLineEdit(choice_data.get("condition", ""))
+        self.inp_condition.setPlaceholderText("Ex: $gold >= 10")
+        self.inp_condition.textChanged.connect(self.on_change)
+        row_cond.addWidget(self.inp_condition)
+        body_layout.addLayout(row_cond)
+        
+        # One Shot
+        self.chk_oneshot = QCheckBox("Unique (One-Shot)")
+        self.chk_oneshot.setChecked(choice_data.get("is_one_shot", False))
+        self.chk_oneshot.toggled.connect(self.on_oneshot_toggled)
+        body_layout.addWidget(self.chk_oneshot)
+        
+        # One Shot Options Group
+        self.group_oneshot = QWidget()
+        group_layout = QVBoxLayout(self.group_oneshot)
+        group_layout.setContentsMargins(10, 0, 0, 0)
+        
+        # Action (Delete, Replace, Disable, None)
+        row_action = QHBoxLayout()
+        row_action.addWidget(QLabel("Action après usage:"))
+        self.combo_action = QComboBox()
+        self.combo_action.addItem("Supprimer (Disparait)", "delete")
+        self.combo_action.addItem("Remplacer (Autre choix)", "replace")
+        self.combo_action.addItem("Désactiver (Grisé)", "disable")
+        self.combo_action.addItem("Aucune (Reste visible)", "none")
+        
+        current_action = choice_data.get("after_use", "delete")
+        # Migrate old "modify_text" to "delete" + check modify text
+        if current_action == "modify_text":
+            current_action = "delete"
+            choice_data["modify_text_enabled"] = True
+            
+        idx_action = self.combo_action.findData(current_action)
+        if idx_action >= 0:
+            self.combo_action.setCurrentIndex(idx_action)
+        self.combo_action.currentIndexChanged.connect(self.on_action_changed)
+        row_action.addWidget(self.combo_action)
+        group_layout.addLayout(row_action)
+        
+        # Replacement Group
+        self.group_replacement = QWidget()
+        rep_layout = QVBoxLayout(self.group_replacement)
+        rep_layout.setContentsMargins(0, 0, 0, 0)
+        
+        rep_data = choice_data.get("replacement_data", {})
+        self.inp_rep_text = QLineEdit(rep_data.get("text", ""))
+        self.inp_rep_text.setPlaceholderText("Texte du remplacement")
+        self.inp_rep_text.textChanged.connect(self.on_change)
+        rep_layout.addWidget(self.inp_rep_text)
+        
+        self.combo_rep_target = QComboBox()
+        self.combo_rep_target.setEditable(True)
+        self.combo_rep_target.addItem("", "")
+        if self.project:
+            for node in self.project.nodes.values():
+                self.combo_rep_target.addItem(f"{node.title} ({node.id})", node.id)
+        idx_rep = self.combo_rep_target.findData(rep_data.get("target_node_id", ""))
+        if idx_rep >= 0:
+            self.combo_rep_target.setCurrentIndex(idx_rep)
+        self.combo_rep_target.currentIndexChanged.connect(self.on_change)
+        rep_layout.addWidget(self.combo_rep_target)
+        
+        group_layout.addWidget(self.group_replacement)
+
+        # Text Modification Checkbox
+        self.chk_modify_text = QCheckBox("Modifier le texte de la scène")
+        self.chk_modify_text.setChecked(choice_data.get("modify_text_enabled", False))
+        self.chk_modify_text.toggled.connect(self.on_modify_text_toggled)
+        group_layout.addWidget(self.chk_modify_text)
+
+        # Text Modification Editor
+        self.inp_scene_text = QTextEdit()
+        self.inp_scene_text.setPlaceholderText("Nouveau texte de la scène...")
+        self.inp_scene_text.setMaximumHeight(100)
+        self.inp_scene_text.setText(choice_data.get("new_scene_text", ""))
+        self.inp_scene_text.textChanged.connect(self.on_scene_text_changed)
+        group_layout.addWidget(self.inp_scene_text)
+        
+        body_layout.addWidget(self.group_oneshot)
+        
+        # Events
+        self.editor_events = EventEditorWidget("Événements au clic")
+        self.editor_events.set_events(choice_data.get("events", []), project=self.project)
+        self.editor_events.data_changed.connect(self.on_change)
+        body_layout.addWidget(self.editor_events)
+        
+        self.collapsible.setContentLayout(body_layout)
+        layout.addWidget(self.collapsible)
+        
+        # Initial State
+        self.on_oneshot_toggled()
+        self.on_action_changed()
+        self.on_modify_text_toggled()
+
+    def on_oneshot_toggled(self):
+        is_oneshot = self.chk_oneshot.isChecked()
+        self.group_oneshot.setVisible(is_oneshot)
+        self.on_change()
+
+    def on_action_changed(self):
+        action = self.combo_action.currentData()
+        self.group_replacement.setVisible(action == "replace")
+        self.on_change()
+
+    def on_modify_text_toggled(self):
+        enabled = self.chk_modify_text.isChecked()
+        self.inp_scene_text.setVisible(enabled)
+        self.on_change()
+
+    def on_scene_text_changed(self):
+        self.choice_data["new_scene_text"] = self.inp_scene_text.toPlainText()
+        self.changed.emit()
 
     def on_change(self):
         self.choice_data["text"] = self.inp_text.text()
-        self.choice_data["condition"] = self.inp_cond.text()
+        self.choice_data["target_node_id"] = self.combo_target.currentData()
+        self.choice_data["condition"] = self.inp_condition.text()
+        self.choice_data["is_one_shot"] = self.chk_oneshot.isChecked()
+        self.choice_data["after_use"] = self.combo_action.currentData()
+        self.choice_data["modify_text_enabled"] = self.chk_modify_text.isChecked()
+        
+        if self.combo_action.currentData() == "replace":
+            self.choice_data["replacement_data"] = {
+                "text": self.inp_rep_text.text(),
+                "target_node_id": self.combo_rep_target.currentData()
+            }
+            
+        if hasattr(self, 'editor_events'):
+            self.choice_data["events"] = self.editor_events.events
         self.changed.emit()
 
-    def on_target_changed(self, index):
-        data = self.combo_target.itemData(index)
-        if data:
-            self.choice_data["target_node_id"] = data
-            self.changed.emit()
-
-    def on_target_text_changed(self, text):
-        self.choice_data["target_node_id"] = text
-        self.changed.emit()
-        
-    def on_oneshot_changed(self, state):
-        is_checked = bool(state)
-        self.choice_data["is_one_shot"] = is_checked
-        self.combo_after.setVisible(is_checked)
-        self.changed.emit()
-        
-    def on_after_changed(self, index):
-        self.choice_data["after_use"] = "delete" if index == 0 else "replace"
-        self.changed.emit()
-        
-    def on_events_changed(self):
-        self.choice_data["events"] = self.event_editor.events
-        self.changed.emit()
+    def remove_self(self):
+        self.removed.emit()
 
 
 class ChoiceEditorWidget(QWidget):
@@ -429,204 +551,10 @@ class ChoiceEditorWidget(QWidget):
 
     def refresh_list(self):
         while self.container_layout.count():
-            child = self.container_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-        
-        for c in self.choices:
-            self._create_choice_widget(c)
-
-    def _create_choice_widget(self, choice_data):
-        item = ChoiceItemWidget(choice_data, self.project)
-        item.removed.connect(lambda: self.remove_choice(item))
-        item.changed.connect(self.data_changed.emit)
-        self.container_layout.addWidget(item)
-
-    def add_choice(self):
-        new_choice = {
-            "id": str(uuid.uuid4()),
-            "text": "Nouveau Choix", 
-            "target_node_id": "", 
-            "condition": "",
-            "is_one_shot": False,
-            "after_use": "delete",
-            "events": []
-        }
-        self.choices.append(new_choice)
-        self._create_choice_widget(new_choice)
-        self.data_changed.emit()
-
-    def remove_choice(self, item_widget):
-        macro_key = self.combo_type.currentData()
-        new_event = {"type": macro_key, "parameters": {}}
-        self.events.append(new_event)
-        self._create_event_widget(new_event)
-        self.data_changed.emit()
-
-    def remove_event(self, item_widget):
-        if item_widget.event_data in self.events:
-            self.events.remove(item_widget.event_data)
-        self.data_changed.emit()
-
-
-class ChoiceItemWidget(QFrame):
-    removed = pyqtSignal()
-    changed = pyqtSignal()
-
-    def __init__(self, choice_data, project=None):
-        super().__init__()
-        self.choice_data = choice_data
-        self.project = project
-        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
-        self.setStyleSheet("QFrame { background-color: #444; border-radius: 5px; margin-bottom: 5px; }")
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        
-        # Compact Layout
-        # Row 1: Text | Target | Remove
-        row1 = QHBoxLayout()
-        
-        self.inp_text = QLineEdit(choice_data.get("text", ""))
-        self.inp_text.setPlaceholderText("Texte du choix...")
-        self.inp_text.textChanged.connect(self.on_change)
-        row1.addWidget(self.inp_text, 2)
-        
-        self.combo_target = QComboBox()
-        self.combo_target.setEditable(True)
-        self.combo_target.addItem("", "")
-        if self.project:
-            for node in self.project.nodes.values():
-                self.combo_target.addItem(node.title, node.id)
-        
-        # Set current target
-        target_id = choice_data.get("target_node_id", "")
-        idx = self.combo_target.findData(target_id)
-        if idx >= 0:
-            self.combo_target.setCurrentIndex(idx)
-        else:
-            self.combo_target.setEditText(target_id)
-            
-        self.combo_target.currentIndexChanged.connect(self.on_target_changed)
-        self.combo_target.editTextChanged.connect(self.on_target_text_changed)
-        row1.addWidget(self.combo_target, 2)
-        
-        btn_remove = QPushButton("X")
-        btn_remove.setFixedSize(20, 20)
-        btn_remove.setStyleSheet("background-color: #d9534f; color: white; border: none; border-radius: 3px;")
-        btn_remove.clicked.connect(self.remove_self)
-        row1.addWidget(btn_remove)
-        
-        layout.addLayout(row1)
-        
-        # Row 2: Condition | One-Shot | After Use
-        row2 = QHBoxLayout()
-        
-        self.inp_cond = QLineEdit(choice_data.get("condition", ""))
-        self.inp_cond.setPlaceholderText("Condition (ex: gold >= 10)")
-        self.inp_cond.textChanged.connect(self.on_change)
-        row2.addWidget(self.inp_cond)
-        
-        self.chk_oneshot = QCheckBox("Unique")
-        self.chk_oneshot.setChecked(choice_data.get("is_one_shot", False))
-        self.chk_oneshot.stateChanged.connect(self.on_oneshot_changed)
-        row2.addWidget(self.chk_oneshot)
-        
-        self.combo_after = QComboBox()
-        self.combo_after.addItems(["Disparaître", "Remplacer"])
-        current_after = choice_data.get("after_use", "delete")
-        self.combo_after.setCurrentIndex(0 if current_after == "delete" else 1)
-        self.combo_after.currentIndexChanged.connect(self.on_after_changed)
-        # Only visible if oneshot is checked
-        self.combo_after.setVisible(self.chk_oneshot.isChecked())
-        row2.addWidget(self.combo_after)
-        
-        layout.addLayout(row2)
-        
-        # Event Editor (Collapsible or just below)
-        self.event_editor = EventEditorWidget("Événements")
-        self.event_editor.set_events(choice_data.get("events", []), project=self.project)
-        self.event_editor.data_changed.connect(self.on_events_changed)
-        layout.addWidget(self.event_editor)
-
-    def remove_self(self):
-        self.removed.emit()
-        self.deleteLater()
-
-    def on_change(self):
-        self.choice_data["text"] = self.inp_text.text()
-        self.choice_data["condition"] = self.inp_cond.text()
-        self.changed.emit()
-
-    def on_target_changed(self, index):
-        data = self.combo_target.itemData(index)
-        if data:
-            self.choice_data["target_node_id"] = data
-            self.changed.emit()
-
-    def on_target_text_changed(self, text):
-        self.choice_data["target_node_id"] = text
-        self.changed.emit()
-        
-    def on_oneshot_changed(self, state):
-        is_checked = bool(state)
-        self.choice_data["is_one_shot"] = is_checked
-        self.combo_after.setVisible(is_checked)
-        self.changed.emit()
-        
-    def on_after_changed(self, index):
-        self.choice_data["after_use"] = "delete" if index == 0 else "replace"
-        self.changed.emit()
-        
-    def on_events_changed(self):
-        self.choice_data["events"] = self.event_editor.events
-        self.changed.emit()
-
-
-class ChoiceEditorWidget(QWidget):
-    """Widget pour éditer les choix avec une UI ergonomique."""
-    
-    data_changed = pyqtSignal()
-    
-    def __init__(self, title="Choix"):
-        super().__init__()
-        self.choices = []
-        self.project = None
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Scroll Area
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setStyleSheet("background-color: transparent;")
-        
-        self.container_widget = QWidget()
-        self.container_widget.setStyleSheet("background-color: transparent;")
-        self.container_layout = QVBoxLayout(self.container_widget)
-        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.container_layout.setSpacing(5)
-        
-        self.scroll_area.setWidget(self.container_widget)
-        layout.addWidget(self.scroll_area)
-        
-        # Add Button
-        self.btn_add = QPushButton("Ajouter un Choix")
-        self.btn_add.setStyleSheet("background-color: #5cb85c; padding: 5px;")
-        self.btn_add.clicked.connect(self.add_choice)
-        layout.addWidget(self.btn_add)
-
-    def set_choices(self, choices, project=None):
-        self.choices = choices if choices else []
-        self.project = project
-        self.refresh_list()
-
-    def refresh_list(self):
-        while self.container_layout.count():
-            child = self.container_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+            item = self.container_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
         
         for c in self.choices:
             self._create_choice_widget(c)
@@ -657,6 +585,120 @@ class ChoiceEditorWidget(QWidget):
         self.data_changed.emit()
 
 
+class TextVariantItemWidget(QFrame):
+    removed = pyqtSignal()
+    changed = pyqtSignal()
+
+    def __init__(self, variant_data):
+        super().__init__()
+        self.variant_data = variant_data
+        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        self.setStyleSheet("QFrame { background-color: #444; border-radius: 5px; margin-bottom: 5px; }")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Header: Condition + Remove
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(QLabel("Condition:"))
+        
+        self.inp_condition = QLineEdit(variant_data.get("condition", ""))
+        self.inp_condition.setPlaceholderText("Ex: $visits == 0")
+        self.inp_condition.textChanged.connect(self.on_change)
+        header_layout.addWidget(self.inp_condition)
+        
+        btn_remove = QPushButton("X")
+        btn_remove.setFixedSize(20, 20)
+        btn_remove.setStyleSheet("background-color: #d9534f; color: white; border: none; border-radius: 3px;")
+        btn_remove.clicked.connect(self.remove_self)
+        header_layout.addWidget(btn_remove)
+        
+        layout.addLayout(header_layout)
+        
+        # Text Area
+        self.inp_text = QTextEdit()
+        self.inp_text.setPlaceholderText("Texte de la variante...")
+        self.inp_text.setMaximumHeight(80)
+        self.inp_text.setPlainText(variant_data.get("text", ""))
+        self.inp_text.textChanged.connect(self.on_change)
+        layout.addWidget(self.inp_text)
+
+    def on_change(self):
+        self.variant_data["condition"] = self.inp_condition.text()
+        self.variant_data["text"] = self.inp_text.toPlainText()
+        self.changed.emit()
+
+    def remove_self(self):
+        self.removed.emit()
+
+
+class TextVariantEditorWidget(QWidget):
+    """Widget pour éditer les variantes de texte."""
+    data_changed = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.variants = []
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Scroll Area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setStyleSheet("background-color: transparent;")
+        
+        self.container_widget = QWidget()
+        self.container_widget.setStyleSheet("background-color: transparent;")
+        self.container_layout = QVBoxLayout(self.container_widget)
+        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.container_layout.setSpacing(5)
+        
+        self.scroll_area.setWidget(self.container_widget)
+        layout.addWidget(self.scroll_area)
+        
+        # Add Button
+        self.btn_add = QPushButton("Ajouter une Variante")
+        self.btn_add.setStyleSheet("background-color: #5cb85c; padding: 5px;")
+        self.btn_add.clicked.connect(self.add_variant)
+        layout.addWidget(self.btn_add)
+
+    def set_variants(self, variants):
+        self.variants = variants if variants else []
+        self.refresh_list()
+
+    def refresh_list(self):
+        while self.container_layout.count():
+            item = self.container_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        
+        for v in self.variants:
+            self._create_variant_widget(v)
+
+    def _create_variant_widget(self, variant_data):
+        item = TextVariantItemWidget(variant_data)
+        item.removed.connect(lambda: self.remove_variant(item))
+        item.changed.connect(self.data_changed.emit)
+        self.container_layout.addWidget(item)
+
+    def add_variant(self):
+        new_variant = {
+            "condition": "$visits > 0",
+            "text": "Nouveau texte..."
+        }
+        self.variants.append(new_variant)
+        self._create_variant_widget(new_variant)
+        self.data_changed.emit()
+
+    def remove_variant(self, item_widget):
+        if item_widget.variant_data in self.variants:
+            self.variants.remove(item_widget.variant_data)
+        self.data_changed.emit()
+
+
 class InspectorPanel(QWidget):
     """
     Panneau latéral pour éditer les propriétés du nœud sélectionné.
@@ -667,6 +709,7 @@ class InspectorPanel(QWidget):
         super().__init__()
         self.current_node_item = None
         self.project = None
+        
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
@@ -683,7 +726,7 @@ class InspectorPanel(QWidget):
                 background-color: #2b2b2b;
                 color: #ffffff;
             }
-            QLineEdit, QTextEdit, QComboBox {
+            QLineEdit, QTextEdit, QComboBox, QDoubleSpinBox {
                 background-color: #3c3c3c;
                 border: 1px solid #555;
                 color: #ffffff;
@@ -700,14 +743,21 @@ class InspectorPanel(QWidget):
                 subcontrol-position: top left;
                 padding: 0 3px;
             }
-            QToolBox::tab {
+            QTabWidget::pane {
+                border: 1px solid #444;
+                top: -1px; 
+            }
+            QTabBar::tab {
                 background: #3c3c3c;
                 color: #ffffff;
                 border: 1px solid #555;
+                padding: 8px;
+                min-width: 80px;
             }
-            QToolBox::tab:selected {
+            QTabBar::tab:selected {
                 background: #505050;
                 font-weight: bold;
+                border-bottom-color: #505050;
             }
             QPushButton {
                 background-color: #4a90e2;
@@ -723,67 +773,75 @@ class InspectorPanel(QWidget):
             }
         """)
 
-        # Scroll Area principal pour tout le panneau
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setStyleSheet("background-color: transparent;")
-        self.layout.addWidget(self.scroll_area)
+        # --- Tabs ---
+        self.tabs = QTabWidget()
+        self.layout.addWidget(self.tabs)
 
-        self.container_widget = QWidget()
-        self.container_widget.setStyleSheet("background-color: transparent;")
-        self.container_layout = QVBoxLayout(self.container_widget)
-        self.container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.container_layout.setSpacing(15)
-        self.scroll_area.setWidget(self.container_widget)
-
-        # --- Section 1: Général ---
-        self.group_general = QGroupBox("Général")
-        self.layout_general = QVBoxLayout(self.group_general)
+        # Tab 1: Général
+        self.tab_general = QWidget()
+        self.layout_general = QVBoxLayout(self.tab_general)
+        self.layout_general.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         self.form_general = QFormLayout()
         self.txt_title = QLineEdit()
         self.txt_title.textChanged.connect(self.on_title_changed)
         self.form_general.addRow("Titre :", self.txt_title)
-        self.layout_general.addLayout(self.form_general)
-
-        self.layout_general.addWidget(QLabel("Contenu :"))
-        self.txt_content = QTextEdit()
-        self.txt_content.setPlaceholderText("Texte du dialogue ou de la description...")
-        self.txt_content.textChanged.connect(self.on_content_changed)
-        self.layout_general.addWidget(self.txt_content)
         
-        self.container_layout.addWidget(self.group_general)
+        self.layout_general.addLayout(self.form_general)
+        self.tabs.addTab(self.tab_general, "Général")
 
-        # --- Section 2: Logique (Events) ---
-        self.group_logic = QGroupBox("Logique & Événements")
-        self.layout_logic = QVBoxLayout(self.group_logic)
+        # Tab 2: Logique
+        self.tab_logic = QWidget()
+        self.layout_logic = QVBoxLayout(self.tab_logic)
+        self.layout_logic.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         self.editor_on_enter = EventEditorWidget("On Enter")
         self.editor_on_enter.data_changed.connect(self.on_logic_changed)
         self.layout_logic.addWidget(QLabel("<b>À l'entrée de la scène :</b>"))
         self.layout_logic.addWidget(self.editor_on_enter)
         
-        self.container_layout.addWidget(self.group_logic)
+        self.tabs.addTab(self.tab_logic, "Logique")
 
-        # --- Section 3: Choix ---
-        self.group_choices = QGroupBox("Choix & Navigation")
-        self.layout_choices = QVBoxLayout(self.group_choices)
+        # Tab 3: Choix
+        self.tab_choices = QWidget()
+        self.layout_choices = QVBoxLayout(self.tab_choices)
+        self.layout_choices.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         self.editor_choices = ChoiceEditorWidget()
         self.editor_choices.data_changed.connect(self.on_choices_changed)
         self.layout_choices.addWidget(self.editor_choices)
         
-        self.container_layout.addWidget(self.group_choices)
+        self.tabs.addTab(self.tab_choices, "Choix")
+
+        # Tab 4: Texte (Variantes)
+        self.tab_text = QWidget()
+        self.layout_text = QVBoxLayout(self.tab_text)
+        self.layout_text.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        # Default Text (Read-Only View)
+        self.layout_text.addWidget(QLabel("<b>Texte par défaut (éditable dans le graphe) :</b>"))
+        self.txt_default_preview = QTextEdit()
+        self.txt_default_preview.setReadOnly(True)
+        self.txt_default_preview.setMaximumHeight(80)
+        self.txt_default_preview.setStyleSheet("color: #aaa; font-style: italic;")
+        self.layout_text.addWidget(self.txt_default_preview)
+        
+        self.layout_text.addWidget(QLabel("<b>Variantes Conditionnelles :</b>"))
+        self.editor_variants = TextVariantEditorWidget()
+        self.editor_variants.data_changed.connect(self.on_variants_changed)
+        self.layout_text.addWidget(self.editor_variants)
+        
+        self.tabs.addTab(self.tab_text, "Texte")
 
         # État initial
         self.set_visible_editors(False)
+        self._is_loading = False
 
     def set_project(self, project):
         self.project = project
 
     def set_visible_editors(self, visible):
-        self.container_widget.setVisible(visible)
+        self.tabs.setVisible(visible)
         if not visible:
             self.lbl_header.setText("Aucune sélection")
         else:
@@ -797,56 +855,51 @@ class InspectorPanel(QWidget):
             self.set_visible_editors(False)
             return
 
+        # On prend le premier nœud sélectionné
         self.current_node_item = node_items[0]
-        self._load_data_from_node()
         self.set_visible_editors(True)
+        self.lbl_header.setText(f"Nœud : {self.current_node_item.model.title}")
 
-    def _load_data_from_node(self):
-        if not self.current_node_item:
-            return
+        # Charger les données dans les champs
+        self._load_data_from_node(self.current_node_item.model)
 
-        model = self.current_node_item.model
-
-        self.txt_title.blockSignals(True)
-        self.txt_content.blockSignals(True)
-        self.editor_on_enter.blockSignals(True)
-        self.editor_choices.blockSignals(True)
-
-        self.txt_title.setText(model.title)
-        self.txt_content.setText(model.content.get("text", ""))
+    def _load_data_from_node(self, node_model):
+        self._is_loading = True
         
-        # Load Events
-        logic = model.logic
-        self.editor_on_enter.set_events(logic.get("on_enter", []), project=self.project)
+        # General
+        self.txt_title.setText(node_model.title)
         
-        # Load Choices
-        self.editor_choices.set_choices(model.content.get("choices", []), project=self.project)
-
-        self.txt_title.blockSignals(False)
-        self.txt_content.blockSignals(False)
-        self.editor_on_enter.blockSignals(False)
-        self.editor_choices.blockSignals(False)
+        # Logic
+        self.editor_on_enter.set_events(node_model.logic.get("on_enter", []), project=self.project)
+        
+        # Choices
+        self.editor_choices.set_choices(node_model.content.get("choices", []), project=self.project)
+        
+        # Text
+        self.txt_default_preview.setPlainText(node_model.content.get("text", ""))
+        self.editor_variants.set_variants(node_model.content.get("text_variants", []))
+        
+        self._is_loading = False
 
     def on_title_changed(self, text):
-        if self.current_node_item:
+        if self.current_node_item and not self._is_loading:
             self.current_node_item.model.title = text
-            self.current_node_item._title_item.setPlainText(text)
-            self.data_changed.emit()
-
-    def on_content_changed(self):
-        if self.current_node_item:
-            text = self.txt_content.toPlainText()
-            self.current_node_item.model.content["text"] = text
             self.current_node_item.update_preview()
+            self.lbl_header.setText(f"Nœud : {text}")
             self.data_changed.emit()
 
     def on_logic_changed(self):
-        if self.current_node_item:
+        if self.current_node_item and not self._is_loading:
             self.current_node_item.model.logic["on_enter"] = self.editor_on_enter.events
             self.data_changed.emit()
 
     def on_choices_changed(self):
-        if self.current_node_item:
+        if self.current_node_item and not self._is_loading:
             self.current_node_item.model.content["choices"] = self.editor_choices.choices
             self.current_node_item.update_preview()
+            self.data_changed.emit()
+
+    def on_variants_changed(self):
+        if self.current_node_item and not self._is_loading:
+            self.current_node_item.model.content["text_variants"] = self.editor_variants.variants
             self.data_changed.emit()

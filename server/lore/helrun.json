@@ -1,0 +1,841 @@
+{
+  "meta": {
+    "continent_id": "helrun",
+    "description": "Cartographie haute résolution intégrale du continent Helrün.",
+    "scale_factor": "local",
+    "parent_file": "velkarum.json"
+  },
+  "nodes": {
+    "Skarnheim_Puits_Chaleur": {
+      "x": 75.0,
+      "y": 55.0,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Puits de Chaleur",
+      "type": "Capitale_Centre",
+      "description": "Le centre de la citadelle, construit directement sur la cheminée volcanique. Il y fait une chaleur tropicale étouffante.",
+      "sociology": {
+        "ruling_faction": "Gardiens du Puits",
+        "social_tension": 30,
+        "law_enforcement": "High"
+      },
+      "environment": {
+        "temperature": "Hot",
+        "hazards": [
+          "Vapeur_Brulante"
+        ]
+      },
+      "encounters": {
+        "roaming_mobs": [
+          "Garde Thermique",
+          "Ingénieur Géothermique"
+        ]
+      }
+    },
+    "Skarnheim_Trone_Obsidienne": {
+      "x": 75.05,
+      "y": 55.05,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Trône d'Obsidienne",
+      "type": "Gouvernement",
+      "description": "Siège du Jarl Suprême. Un bloc de verre volcanique noir, chaud au toucher.",
+      "access": "Restricted",
+      "danger": 0
+    },
+    "Skarnheim_Serres_Souterraines": {
+      "x": 75.1,
+      "y": 55.1,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Serres Souterraines",
+      "type": "Culture",
+      "description": "Des cavernes éclairées par des miroirs où poussent des mousses, des champignons et quelques légumes précieux.",
+      "market": {
+        "specialty": "Legumes_Frais",
+        "wealth_tier": "Luxury"
+      }
+    },
+    "Skarnheim_Hall_Brumes": {
+      "x": 75.02,
+      "y": 54.98,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Hall des Brumes",
+      "type": "Culture",
+      "description": "Centre communautaire enfumé où l'on débat des quotas de charbon et de nourriture.",
+      "sociology": {
+        "social_tension": 40
+      }
+    },
+    "Skarnheim_Hall_Hydromel": {
+      "x": 74.95,
+      "y": 55.02,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Hall de l'Hydromel",
+      "type": "Taverne",
+      "description": "Immense salle commune. On y boit de l'hydromel chaud et on partage les récits de chasse.",
+      "services": [
+        "Chaleur_Gratuite",
+        "Hydromel",
+        "Rumeurs_Nord"
+      ]
+    },
+    "Skarnheim_Quartier_Peripherique": {
+      "x": 74.9,
+      "y": 54.9,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Quartier Périphérique",
+      "type": "Quartier_Pauvre",
+      "description": "Les quartiers éloignés du Puits. Ici, les murs sont givrés et les habitants dorment entassés pour survivre.",
+      "danger": 2,
+      "environment": {
+        "temperature": "Freezing"
+      },
+      "market": {
+        "wealth_tier": "Survival",
+        "prices": {
+          "charbon": {
+            "base": 10,
+            "scarcity": "high"
+          }
+        }
+      }
+    },
+    "Skarnheim_Temple_Voiles": {
+      "x": 75.15,
+      "y": 55.0,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Temple des Voiles",
+      "type": "Sanctuaire",
+      "description": "Lieu de culte dédié aux esprits du vent et des aurores boréales.",
+      "services": [
+        "Prediction_Meteo",
+        "Benediction_Voyage"
+      ]
+    },
+    "Skarnheim_Chenil_Royal": {
+      "x": 75.2,
+      "y": 55.15,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Chenil Royal",
+      "type": "Station",
+      "description": "Élevage des chiens de traîneau de guerre. Ils sont plus nourris que les pauvres.",
+      "market": {
+        "services": [
+          "Location_Traineau",
+          "Achat_Chien"
+        ]
+      }
+    },
+    "Skarnheim_Sortie_Tunnel": {
+      "x": 74.8,
+      "y": 55.0,
+      "continent": "Helrun",
+      "city": "Skarnheim",
+      "place": "Sortie Tunnel",
+      "type": "Gate",
+      "description": "Immense porte blindée isolant la ville du blizzard extérieur.",
+      "danger": 1
+    },
+    "Nerr_Quais_Graisse": {
+      "x": 25.0,
+      "y": 15.0,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Quais de Graisse",
+      "type": "Port",
+      "description": "Le sol est glissant de sang et de graisse de baleine. L'odeur est insoutenable pour un étranger.",
+      "market": {
+        "cycle_dependence": "Mer",
+        "exports": [
+          "Huile",
+          "Viande"
+        ],
+        "imports": [
+          "Acier"
+        ]
+      }
+    },
+    "Nerr_Usine_Fonte": {
+      "x": 25.05,
+      "y": 15.05,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Usine de Fonte",
+      "type": "Industrie",
+      "description": "Bâtiment où l'on fait bouillir le gras de baleine pour en tirer l'huile. Il y fait chaud et sombre.",
+      "danger": 2
+    },
+    "Nerr_Arene_Lutteurs": {
+      "x": 24.95,
+      "y": 15.02,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Arène des Lutteurs",
+      "type": "Arene",
+      "description": "On y parie sur des luttes à mains nues ou au couteau d'os.",
+      "danger": 3
+    },
+    "Nerr_Syndicat_Glace": {
+      "x": 25.1,
+      "y": 14.95,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Syndicat de la Glace",
+      "type": "Guilde",
+      "description": "Le monopole d'exportation vers le sud. C'est ici que se négocient les contrats avec Iskarion.",
+      "sociology": {
+        "ruling_faction": "Jarls du Harpon"
+      }
+    },
+    "Nerr_Taverne_Glace": {
+      "x": 24.9,
+      "y": 14.98,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Taverne de Glace",
+      "type": "Taverne",
+      "description": "Taverne éclairée par des lampes à huile crasseuses. Rixe obligatoire tous les soirs.",
+      "market": {
+        "black_market": true
+      }
+    },
+    "Nerr_Entrepots_Viande": {
+      "x": 25.15,
+      "y": 15.1,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Entrepôts à Viande",
+      "type": "Reserve",
+      "description": "Des milliers de tonnes de viande séchée stockées pour l'hiver.",
+      "danger": 1
+    },
+    "Nerr_Mines_Sel_Fossile": {
+      "x": 24.0,
+      "y": 14.0,
+      "continent": "Helrun",
+      "city": "Nerr",
+      "place": "Mines de Sel Fossile",
+      "type": "Mine",
+      "description": "Galeries creusées dans le permafrost pour extraire le sel de conservation.",
+      "danger": 3,
+      "access": "Restricted"
+    },
+    "Isbjorn_Havn_Comptoir": {
+      "x": 80.0,
+      "y": 90.0,
+      "continent": "Helrun",
+      "city": "Isbjorn_Havn",
+      "place": "Comptoir",
+      "type": "Port",
+      "description": "Seul port ouvert aux étrangers sans restriction. Murs de neige compactée de 10m de haut.",
+      "market": {
+        "black_market": true,
+        "specialty": "Import_Export_Tout"
+      }
+    },
+    "Isbjorn_Quartier_Etranger": {
+      "x": 80.05,
+      "y": 90.05,
+      "continent": "Helrun",
+      "city": "Isbjorn_Havn",
+      "place": "Quartier Étranger",
+      "type": "Quartier_Riche",
+      "description": "Maisons bien isolées louées aux marchands du sud. Le loyer inclut le chauffage.",
+      "market": {
+        "wealth_tier": "Rich"
+      }
+    },
+    "Isbjorn_Entrepots_Francs": {
+      "x": 79.95,
+      "y": 89.95,
+      "continent": "Helrun",
+      "city": "Isbjorn_Havn",
+      "place": "Entrepôts Francs",
+      "type": "Entrepot",
+      "description": "Zones de stockage hors douane. On y trouve des caisses de fusils Thaurgrims et d'opium Varnalien."
+    },
+    "Narvik_Longere_Tribale": {
+      "x": 55.0,
+      "y": 30.0,
+      "continent": "Helrun",
+      "city": "Narvik",
+      "place": "Longère Tribale",
+      "type": "Ville_Centre",
+      "description": "Centre communautaire d'une tribu semi-nomade. Le feu central ne s'éteint jamais.",
+      "sociology": {
+        "ruling_faction": "Conseil des Anciens"
+      }
+    },
+    "Narvik_Enclos_Rennes": {
+      "x": 55.1,
+      "y": 30.1,
+      "continent": "Helrun",
+      "city": "Narvik",
+      "place": "Enclos des Rennes",
+      "type": "Station",
+      "description": "Des milliers de bêtes parquées ici. Elles fournissent lait, viande, cuir et transport.",
+      "market": {
+        "specialty": "Rennes"
+      }
+    },
+    "Narvik_Sanctuaire_Totem": {
+      "x": 54.9,
+      "y": 29.9,
+      "continent": "Helrun",
+      "city": "Narvik",
+      "place": "Sanctuaire des Totems",
+      "type": "Sanctuaire",
+      "description": "Piliers de bois sculptés représentant les animaux esprits. Le sang est versé sur la neige.",
+      "danger": 1
+    },
+    "Ygral_Sanctuaire_Glace": {
+      "x": 55.0,
+      "y": 75.0,
+      "continent": "Helrun",
+      "city": "Ygral",
+      "place": "Sanctuaire de Glace",
+      "type": "Sanctuaire",
+      "description": "Monastère isolé taillé dans un glacier bleu. Les moines y font vœu de silence.",
+      "environment": {
+        "temperature": "Freezing",
+        "magic": "High"
+      }
+    },
+    "Ygral_Dortoir_Ermites": {
+      "x": 55.05,
+      "y": 75.05,
+      "continent": "Helrun",
+      "city": "Ygral",
+      "place": "Dortoir des Ermites",
+      "type": "Refuge",
+      "description": "On dort sur des peaux de bêtes à même la glace. Épreuve d'endurance spirituelle.",
+      "danger": 2
+    },
+    "Ygral_Labo_Glaciologie": {
+      "x": 55.1,
+      "y": 74.9,
+      "continent": "Helrun",
+      "city": "Ygral",
+      "place": "Labo de Glaciologie",
+      "type": "Science",
+      "description": "On étudie les carottes de glace pour lire l'histoire du monde avant les hommes.",
+      "access": "Restricted"
+    },
+    "Repaire_Naufrageurs_Grotte": {
+      "x": 20.5,
+      "y": 25.5,
+      "continent": "Helrun",
+      "city": "Repaire_Naufrageurs",
+      "place": "Grotte",
+      "type": "Repaire",
+      "description": "Repaire de pirates des glaces qui allument de faux feux pour échouer les navires.",
+      "danger": 5,
+      "encounters": {
+        "roaming_mobs": [
+          "Naufrageur",
+          "Pilleur d'Epave"
+        ]
+      },
+      "market": {
+        "black_market": true,
+        "specialty": "Butin_Epave"
+      }
+    },
+    "Embouchure_Drann": {
+      "x": 20.0,
+      "y": 25.0,
+      "continent": "Helrun",
+      "city": "Embouchure",
+      "place": "Drann",
+      "type": "Lieu_Sauvage",
+      "description": "Un labyrinthe de glace brisée où le fleuve rencontre la mer. Terrain de chasse des ours blancs.",
+      "danger": 4
+    },
+    "Caverne_Silence": {
+      "x": 48.0,
+      "y": 62.0,
+      "continent": "Helrun",
+      "city": "Caverne",
+      "place": "Silence",
+      "type": "Mine",
+      "description": "Grotte cristalline où le moindre son peut provoquer un effondrement mortel.",
+      "danger": 6,
+      "environment": {
+        "hazards": [
+          "Effondrement",
+          "Echo_Mortel"
+        ]
+      }
+    },
+    "Relais_Glaciaire": {
+      "x": 30.0,
+      "y": 12.0,
+      "continent": "Helrun",
+      "city": "Relais",
+      "place": "Glaciaire",
+      "type": "Relais",
+      "description": "Cabane de survie fortifiée contre les ours. Stock de bois et de graisse d'urgence.",
+      "services": [
+        "Abri_Urgence"
+      ]
+    },
+    "Bivouac_Toundra": {
+      "x": 52.0,
+      "y": 35.0,
+      "continent": "Helrun",
+      "city": "Bivouac",
+      "place": "Toundra",
+      "type": "Bivouac",
+      "description": "Tentes de peau temporaires. Les nomades bougent dès que le troupeau a mangé tout le lichen."
+    },
+    "Sources_Drann": {
+      "x": 65.0,
+      "y": 80.0,
+      "continent": "Helrun",
+      "city": "Sources",
+      "place": "Drann",
+      "type": "Lieu_Sauvage",
+      "description": "L'eau sort bouillante de la terre. Seul endroit où la verdure pousse à l'air libre. Sacré.",
+      "danger": 3,
+      "encounters": {
+        "roaming_mobs": [
+          "Esprit de l'Eau",
+          "Gardien Tribal"
+        ]
+      }
+    },
+    "Grottes_Drann": {
+      "x": 50.0,
+      "y": 60.0,
+      "continent": "Helrun",
+      "city": "Grottes",
+      "place": "Drann",
+      "type": "Lieu_Souterrain",
+      "description": "Le fleuve coule sous le glacier. On peut y naviguer en barque dans le noir absolu.",
+      "access": "Hidden",
+      "danger": 5
+    },
+    "Abri_Pecheur": {
+      "x": 40.0,
+      "y": 22.0,
+      "continent": "Helrun",
+      "city": "Abri",
+      "place": "Pecheur",
+      "type": "Village",
+      "description": "Trois cabanes accrochées à une falaise. Ils pêchent le requin des glaces.",
+      "market": {
+        "wealth_tier": "Survival"
+      }
+    },
+    "Plaines_Nar": {
+      "x": 50.0,
+      "y": 40.0,
+      "continent": "Helrun",
+      "city": "Plaines",
+      "place": "Nar",
+      "type": "Lieu_Sauvage",
+      "description": "Désert blanc à perte de vue. Le blizzard y souffle en permanence.",
+      "danger": 4,
+      "environment": {
+        "weather": "Blizzard"
+      }
+    },
+    "Plaines_Gelees_Ouest": {
+      "x": 12.0,
+      "y": 80.0,
+      "continent": "Helrun",
+      "city": "Plaines_Gelees",
+      "place": "Ouest",
+      "type": "Lieu_Sauvage",
+      "description": "Territoire de chasse des meutes de loups géants. Aucun repère visuel.",
+      "danger": 5,
+      "encounters": {
+        "roaming_mobs": [
+          "Loup Géant",
+          "Wendigo (Hiver)"
+        ]
+      }
+    },
+    "Cap_Desolation": {
+      "x": 5.0,
+      "y": 60.0,
+      "continent": "Helrun",
+      "city": "Cap",
+      "place": "Desolation",
+      "type": "Lieu_Sauvage",
+      "description": "Le bout du monde. On dit qu'on y voit les fantômes des navires perdus.",
+      "danger": 6,
+      "encounters": {
+        "boss": "Baleine Blanche (Fantôme)"
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "skarn_avenue_puits",
+      "name": "Avenue du Puits",
+      "type": "street",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Trone_Obsidienne",
+      "distance_km": 0.2,
+      "danger": 0
+    },
+    {
+      "id": "skarn_acces_serres",
+      "name": "Tunnel Vert",
+      "type": "tunnel",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Serres_Souterraines",
+      "distance_km": 0.3,
+      "danger": 0
+    },
+    {
+      "id": "skarn_rue_brumes",
+      "name": "Rue des Vapeurs",
+      "type": "street",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Hall_Brumes",
+      "distance_km": 0.1,
+      "danger": 0
+    },
+    {
+      "id": "skarn_acces_taverne",
+      "name": "Passage du Tonneau",
+      "type": "street",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Hall_Hydromel",
+      "distance_km": 0.1,
+      "danger": 0
+    },
+    {
+      "id": "skarn_descente_froid",
+      "name": "Couloir du Givre",
+      "type": "corridor",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Quartier_Peripherique",
+      "distance_km": 0.5,
+      "danger": 1
+    },
+    {
+      "id": "skarn_montee_temple",
+      "name": "Escalier des Vents",
+      "type": "street",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Temple_Voiles",
+      "distance_km": 0.4,
+      "danger": 0
+    },
+    {
+      "id": "skarn_acces_chenil",
+      "name": "Allée des Chiens",
+      "type": "street",
+      "start": "Skarnheim_Puits_Chaleur",
+      "end": "Skarnheim_Chenil_Royal",
+      "distance_km": 0.3,
+      "danger": 1
+    },
+    {
+      "id": "skarn_sortie_tunnel",
+      "name": "Tunnel de Sortie",
+      "type": "tunnel",
+      "start": "Skarnheim_Quartier_Peripherique",
+      "end": "Skarnheim_Sortie_Tunnel",
+      "distance_km": 0.8,
+      "danger": 2
+    },
+    {
+      "id": "nerr_quai_principal",
+      "name": "Quai Sanglant",
+      "type": "street",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Nerr_Usine_Fonte",
+      "distance_km": 0.2,
+      "danger": 1
+    },
+    {
+      "id": "nerr_ruelle_arene",
+      "name": "Impasse des Lutteurs",
+      "type": "alley",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Nerr_Arene_Lutteurs",
+      "distance_km": 0.1,
+      "danger": 2
+    },
+    {
+      "id": "nerr_acces_syndicat",
+      "name": "Rue du Commerce",
+      "type": "street",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Nerr_Syndicat_Glace",
+      "distance_km": 0.2,
+      "danger": 0
+    },
+    {
+      "id": "nerr_impasse_taverne",
+      "name": "Cul-de-sac Ivre",
+      "type": "alley",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Nerr_Taverne_Glace",
+      "distance_km": 0.1,
+      "danger": 1
+    },
+    {
+      "id": "nerr_acces_entrepots",
+      "name": "Route des Stocks",
+      "type": "street",
+      "start": "Nerr_Usine_Fonte",
+      "end": "Nerr_Entrepots_Viande",
+      "distance_km": 0.3,
+      "danger": 1
+    },
+    {
+      "id": "nerr_piste_mines",
+      "name": "Piste du Sel",
+      "type": "ice_road",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Nerr_Mines_Sel_Fossile",
+      "distance_km": 2.0,
+      "danger": 3
+    },
+    {
+      "id": "isbjorn_rue_etrangere",
+      "name": "Rue du Sud",
+      "type": "street",
+      "start": "Isbjorn_Havn_Comptoir",
+      "end": "Isbjorn_Quartier_Etranger",
+      "distance_km": 0.2,
+      "danger": 0
+    },
+    {
+      "id": "isbjorn_acces_docks",
+      "name": "Quai Franc",
+      "type": "street",
+      "start": "Isbjorn_Havn_Comptoir",
+      "end": "Isbjorn_Entrepots_Francs",
+      "distance_km": 0.3,
+      "danger": 1
+    },
+    {
+      "id": "narvik_acces_enclos",
+      "name": "Sentier Battu",
+      "type": "snow_path",
+      "start": "Narvik_Longere_Tribale",
+      "end": "Narvik_Enclos_Rennes",
+      "distance_km": 0.1,
+      "danger": 0
+    },
+    {
+      "id": "narvik_acces_totem",
+      "name": "Chemin des Esprits",
+      "type": "snow_path",
+      "start": "Narvik_Longere_Tribale",
+      "end": "Narvik_Sanctuaire_Totem",
+      "distance_km": 0.2,
+      "danger": 0
+    },
+    {
+      "id": "ygral_montee_sanctuaire",
+      "name": "Marches de Glace",
+      "type": "mountain_path",
+      "start": "Ygral_Sanctuaire_Glace",
+      "end": "Ygral_Dortoir_Ermites",
+      "distance_km": 0.1,
+      "danger": 1
+    },
+    {
+      "id": "ygral_acces_labo",
+      "name": "Crevasse Aménagée",
+      "type": "tunnel",
+      "start": "Ygral_Sanctuaire_Glace",
+      "end": "Ygral_Labo_Glaciologie",
+      "distance_km": 0.2,
+      "danger": 2
+    },
+    {
+      "id": "hel_fjord_1",
+      "name": "Voie des Fjords (Ouest)",
+      "type": "ice_road",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Abri_Pecheur",
+      "distance_km": 400.0,
+      "danger": 3
+    },
+    {
+      "id": "hel_fjord_2",
+      "name": "Voie des Fjords (Est)",
+      "type": "ice_road",
+      "start": "Abri_Pecheur",
+      "end": "Narvik_Longere_Tribale",
+      "distance_km": 400.0,
+      "danger": 3
+    },
+    {
+      "id": "hel_fjord_relais",
+      "name": "Piste de Survie",
+      "type": "snow_path",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Relais_Glaciaire",
+      "distance_km": 100.0,
+      "danger": 4
+    },
+    {
+      "id": "hel_toundra_1",
+      "name": "Piste de la Toundra (Est)",
+      "type": "sled",
+      "start": "Narvik_Longere_Tribale",
+      "end": "Plaines_Nar",
+      "distance_km": 150.0,
+      "danger": 4
+    },
+    {
+      "id": "hel_toundra_2",
+      "name": "Piste de la Toundra (Centre)",
+      "type": "sled",
+      "start": "Plaines_Nar",
+      "end": "Bivouac_Toundra",
+      "distance_km": 150.0,
+      "danger": 4
+    },
+    {
+      "id": "hel_toundra_3",
+      "name": "Piste de la Toundra (Ouest)",
+      "type": "sled",
+      "start": "Bivouac_Toundra",
+      "end": "Skarnheim_Sortie_Tunnel",
+      "distance_km": 300.0,
+      "danger": 4
+    },
+    {
+      "id": "hel_montagne",
+      "name": "Chemin des Sommets",
+      "type": "mountain_path",
+      "start": "Skarnheim_Sortie_Tunnel",
+      "end": "Ygral_Sanctuaire_Glace",
+      "distance_km": 450.0,
+      "danger": 5
+    },
+    {
+      "id": "hel_sources",
+      "name": "Sentier des Origines",
+      "type": "mountain_path",
+      "start": "Ygral_Sanctuaire_Glace",
+      "end": "Sources_Drann",
+      "distance_km": 150.0,
+      "danger": 6
+    },
+    {
+      "id": "hel_embouchure",
+      "name": "Route de la Banquise",
+      "type": "ice_road",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Embouchure_Drann",
+      "distance_km": 150.0,
+      "danger": 3
+    },
+    {
+      "id": "hel_naufrageurs",
+      "name": "Crique Secrète",
+      "type": "boat",
+      "start": "Embouchure_Drann",
+      "end": "Repaire_Naufrageurs_Grotte",
+      "distance_km": 5.0,
+      "danger": 4
+    },
+    {
+      "id": "hel_drann_1",
+      "name": "Rivière Souterraine (Haut)",
+      "type": "boat",
+      "start": "Sources_Drann",
+      "end": "Grottes_Drann",
+      "distance_km": 800.0,
+      "danger": 5
+    },
+    {
+      "id": "hel_drann_2",
+      "name": "Rivière Souterraine (Bas)",
+      "type": "boat",
+      "start": "Grottes_Drann",
+      "end": "Embouchure_Drann",
+      "distance_km": 1300.0,
+      "danger": 5
+    },
+    {
+      "id": "hel_silence",
+      "name": "Galerie Maudite",
+      "type": "tunnel",
+      "start": "Grottes_Drann",
+      "end": "Caverne_Silence",
+      "distance_km": 10.0,
+      "danger": 6
+    },
+    {
+      "id": "hel_ouest_sauvage_1",
+      "name": "Traversée des Glaces",
+      "type": "wild_path",
+      "start": "Nerr_Quais_Graisse",
+      "end": "Plaines_Gelees_Ouest",
+      "distance_km": 500.0,
+      "danger": 5
+    },
+    {
+      "id": "hel_ouest_sauvage_2",
+      "name": "Piste du Bout du Monde",
+      "type": "wild_path",
+      "start": "Plaines_Gelees_Ouest",
+      "end": "Cap_Desolation",
+      "distance_km": 300.0,
+      "danger": 5
+    },
+    {
+      "id": "skarn_link_global",
+      "name": "Connexion Globale Skarnheim",
+      "type": "link",
+      "start": "Skarnheim",
+      "end": "Skarnheim_Puits_Chaleur",
+      "distance_km": 0.0,
+      "danger": 0
+    },
+    {
+      "id": "nerr_link_global",
+      "name": "Connexion Globale Nerr",
+      "type": "link",
+      "start": "Nerr",
+      "end": "Nerr_Quais_Graisse",
+      "distance_km": 0.0,
+      "danger": 0
+    },
+    {
+      "id": "isbjorn_link_global",
+      "name": "Connexion Globale Isbjorn-Havn",
+      "type": "link",
+      "start": "Isbjorn_Havn",
+      "end": "Isbjorn_Havn_Comptoir",
+      "distance_km": 0.0,
+      "danger": 0
+    },
+    {
+      "id": "narvik_link_global",
+      "name": "Connexion Globale Narvik",
+      "type": "link",
+      "start": "Narvik",
+      "end": "Narvik_Longere_Tribale",
+      "distance_km": 0.0,
+      "danger": 0
+    },
+    {
+      "id": "ygral_link_global",
+      "name": "Connexion Globale Ygral",
+      "type": "link",
+      "start": "Ygral",
+      "end": "Ygral_Sanctuaire_Glace",
+      "distance_km": 0.0,
+      "danger": 0
+    }
+  ]
+}

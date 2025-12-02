@@ -54,6 +54,16 @@ class PlayerWindow(QMainWindow):
             menu_width = 400
             self.sliding_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
 
+    def keyPressEvent(self, event):
+        """Gère les raccourcis clavier."""
+        if event.key() == Qt.Key.Key_Return and (event.modifiers() & Qt.KeyboardModifier.AltModifier):
+            if self.isFullScreen():
+                self.showNormal()
+            else:
+                self.showFullScreen()
+        else:
+            super().keyPressEvent(event)
+
     def _load_stylesheet(self):
         try:
             style_path = os.path.join(os.path.dirname(__file__), "src", "assets", "styles", "player_theme.qss")
@@ -192,6 +202,33 @@ class PlayerWindow(QMainWindow):
 
         main_layout.addWidget(self.top_bar)
 
+        # --- LOCATION TAB (Hanging from Top Bar) ---
+        self.lbl_location = QLabel("Eldaron (0, 0)")
+        self.lbl_location.setObjectName("LocationTab")
+        self.lbl_location.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_location.setFixedSize(400, 50)
+        self.lbl_location.setStyleSheet("""
+            QLabel#LocationTab {
+                background-color: #1a1a1a;
+                color: #b1a270;
+                border: 1px solid #333;
+                border-top: none;
+                border-bottom-left-radius: 10px;
+                border-bottom-right-radius: 10px;
+                font-family: 'Underdog';
+                font-size: 14px;
+                font-weight: bold;
+            }
+        """)
+        # Container to center it and handle negative margin if needed
+        loc_container = QWidget()
+        loc_layout = QHBoxLayout(loc_container)
+        loc_layout.setContentsMargins(0, 0, 0, 0)
+        loc_layout.addWidget(self.lbl_location)
+        loc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        main_layout.addWidget(loc_container)
+
         # --- MAIN CONTENT AREA ---
         self.main_area = QWidget()
         self.main_area.setObjectName("MainArea")
@@ -230,6 +267,11 @@ class PlayerWindow(QMainWindow):
             self.stat_labels[name].setText(str(value))
         elif name == "max_health":
              pass
+        elif name == "player_coordinates":
+            # We wait for 'location_text' for the display, but we can keep this for debug or fallback
+            pass
+        elif name == "location_text" or name.startswith("location_"):
+            self.update_location_label()
         
         # Refresh menu if open
         if hasattr(self, 'sliding_menu') and self.sliding_menu.isVisible():
@@ -352,8 +394,38 @@ class PlayerWindow(QMainWindow):
             self.choice_timer.stop()
 
     def make_choice(self, index):
-        self.story_manager.make_choice(index)
-        self.refresh_ui()
+        result = self.story_manager.make_choice(index)
+        
+        # If navigation happened or text was modified, full refresh (re-type text)
+        if result.get("navigated") or result.get("text_modified"):
+            self.refresh_ui()
+        else:
+            # Otherwise, just refresh choices (e.g. one-shot removed) without re-typing text
+            self.refresh_choices_only()
+
+    def refresh_choices_only(self):
+        # 1. Update Choices
+        while self.layout_choices.count():
+            child = self.layout_choices.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        choices = self.story_manager.get_available_choices()
+        if not choices and not self.story_manager.current_node:
+             lbl = QLabel("Fin de l'histoire.")
+             lbl.setStyleSheet("color: #888; font-style: italic; font-size: 16px;")
+             self.layout_choices.addWidget(lbl)
+        
+        for i, choice in enumerate(choices):
+            btn = HoverButton(choice["text"])
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setProperty("class", "choice-btn")
+            btn.clicked.connect(lambda checked, idx=i: self.make_choice(idx))
+            
+            # Show immediately (no fade) for instant feedback
+            self.layout_choices.addWidget(btn)
+
+        self.layout_choices.addStretch()
 
     def update_hud(self):
         vars = self.story_manager.variables.get_all()
@@ -361,6 +433,23 @@ class PlayerWindow(QMainWindow):
         for name, val in vars.items():
             if name in self.stat_labels:
                 self.stat_labels[name].setText(str(val))
+            elif name == "location_text":
+                self.update_location_label()
+
+    def update_location_label(self):
+        vars = self.story_manager.variables
+        continent = vars.get_var("location_continent")
+        city = vars.get_var("location_city")
+        name = vars.get_var("location_name")
+        full_text = vars.get_var("location_text", "Inconnu")
+        
+        if continent and city and name:
+            html = f"<div style='line-height:120%;'>" \
+                   f"<span style='font-size:10pt; color:#888; text-transform:uppercase;'>{continent} - {city}</span><br>" \
+                   f"<span style='font-size:13pt; font-weight:bold; color:#b1a270;'>{name}</span></div>"
+            self.lbl_location.setText(html)
+        else:
+            self.lbl_location.setText(full_text)
 
 
 if __name__ == '__main__':
