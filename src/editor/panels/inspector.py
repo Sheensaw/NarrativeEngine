@@ -1,14 +1,16 @@
 
-
 import sys
 import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QComboBox, QPushButton, 
     QScrollArea, QFrame, QCheckBox, QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
-    QTabWidget, QToolButton, QSizePolicy
+    QTabWidget, QToolButton, QSizePolicy, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation
+from PyQt6.QtGui import QUndoStack, QAction, QIcon
+
+from src.core.commands import ReorderChoicesCommand, EditChoiceCommand
 
 from src.editor.graph.node_item import NodeItem
 from src.core.definitions import MACRO_DEFINITIONS
@@ -515,13 +517,31 @@ class ChoiceEditorWidget(QWidget):
     
     data_changed = pyqtSignal()
     
-    def __init__(self, title="Choix"):
+    def __init__(self, title="Choix", undo_stack=None):
         super().__init__()
         self.choices = []
         self.project = None
+        self.undo_stack = undo_stack
+        self.node_model = None
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Header with Copy/Paste
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(QLabel("<b>Choix</b>"))
+        
+        self.btn_copy = QPushButton("Copier")
+        self.btn_copy.setStyleSheet("background-color: #5bc0de; padding: 3px;")
+        self.btn_copy.clicked.connect(self.copy_choices)
+        header_layout.addWidget(self.btn_copy)
+        
+        self.btn_paste = QPushButton("Coller")
+        self.btn_paste.setStyleSheet("background-color: #f0ad4e; padding: 3px;")
+        self.btn_paste.clicked.connect(self.paste_choices)
+        header_layout.addWidget(self.btn_paste)
+        
+        layout.addLayout(header_layout)
         
         # Scroll Area
         self.scroll_area = QScrollArea()
@@ -544,9 +564,10 @@ class ChoiceEditorWidget(QWidget):
         self.btn_add.clicked.connect(self.add_choice)
         layout.addWidget(self.btn_add)
 
-    def set_choices(self, choices, project=None):
+    def set_choices(self, choices, project=None, node_model=None):
         self.choices = choices if choices else []
         self.project = project
+        self.node_model = node_model
         self.refresh_list()
 
     def refresh_list(self):
@@ -560,10 +581,42 @@ class ChoiceEditorWidget(QWidget):
             self._create_choice_widget(c)
 
     def _create_choice_widget(self, choice_data):
+        # Container for row (Item + Buttons)
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(2)
+        
+        # Reorder Buttons
+        btn_layout = QVBoxLayout()
+        btn_layout.setSpacing(0)
+        btn_layout.setContentsMargins(0,0,0,0)
+        
+        btn_up = QToolButton()
+        btn_up.setText("▲")
+        btn_up.setFixedSize(20, 20)
+        btn_up.setStyleSheet("border: none; color: #888;")
+        
+        btn_down = QToolButton()
+        btn_down.setText("▼")
+        btn_down.setFixedSize(20, 20)
+        btn_down.setStyleSheet("border: none; color: #888;")
+        
+        btn_layout.addWidget(btn_up)
+        btn_layout.addWidget(btn_down)
+        row_layout.addLayout(btn_layout)
+
+        # Item
         item = ChoiceItemWidget(choice_data, self.project)
         item.removed.connect(lambda: self.remove_choice(item))
         item.changed.connect(self.data_changed.emit)
-        self.container_layout.addWidget(item)
+        row_layout.addWidget(item)
+        
+        # Connect buttons
+        btn_up.clicked.connect(lambda: self.move_choice_up(item))
+        btn_down.clicked.connect(lambda: self.move_choice_down(item))
+
+        self.container_layout.addWidget(row_widget)
 
     def add_choice(self):
         new_choice = {
@@ -575,14 +628,103 @@ class ChoiceEditorWidget(QWidget):
             "after_use": "delete",
             "events": []
         }
-        self.choices.append(new_choice)
-        self._create_choice_widget(new_choice)
-        self.data_changed.emit()
+        
+        if self.undo_stack and self.node_model:
+            new_list = self.choices + [new_choice]
+            cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.data_changed)
+            self.undo_stack.push(cmd)
+            self.choices = new_list
+            self.refresh_list()
+            self.data_changed.emit()
+        else:
+            self.choices.append(new_choice)
+            self._create_choice_widget(new_choice)
+            self.data_changed.emit()
 
     def remove_choice(self, item_widget):
         if item_widget.choice_data in self.choices:
-            self.choices.remove(item_widget.choice_data)
-        self.data_changed.emit()
+            if self.undo_stack and self.node_model:
+                new_list = self.choices.copy()
+                new_list.remove(item_widget.choice_data)
+                cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.data_changed)
+                self.undo_stack.push(cmd)
+                self.choices = new_list
+                self.refresh_list()
+                self.data_changed.emit()
+            else:
+                self.choices.remove(item_widget.choice_data)
+                self.data_changed.emit()
+                self.refresh_list()
+
+    def move_choice_up(self, item_widget):
+        if item_widget.choice_data not in self.choices: return
+        idx = self.choices.index(item_widget.choice_data)
+        if idx > 0:
+            new_list = self.choices.copy()
+            new_list[idx], new_list[idx-1] = new_list[idx-1], new_list[idx]
+            
+            if self.undo_stack and self.node_model:
+                cmd = ReorderChoicesCommand(self.node_model, new_list, self.choices, self.data_changed)
+                self.undo_stack.push(cmd)
+                self.choices = new_list
+                self.refresh_list()
+                self.data_changed.emit()
+            else:
+                self.choices = new_list
+                self.refresh_list()
+                self.data_changed.emit()
+
+    def move_choice_down(self, item_widget):
+        if item_widget.choice_data not in self.choices: return
+        idx = self.choices.index(item_widget.choice_data)
+        if idx < len(self.choices) - 1:
+            new_list = self.choices.copy()
+            new_list[idx], new_list[idx+1] = new_list[idx+1], new_list[idx]
+            
+            if self.undo_stack and self.node_model:
+                cmd = ReorderChoicesCommand(self.node_model, new_list, self.choices, self.data_changed)
+                self.undo_stack.push(cmd)
+                self.choices = new_list
+                self.refresh_list()
+                self.data_changed.emit()
+            else:
+                self.choices = new_list
+                self.refresh_list()
+                self.data_changed.emit()
+
+    def copy_choices(self):
+        import json
+        if not self.choices:
+            return
+        clipboard = QApplication.clipboard()
+        # Deep copy
+        data = json.dumps(self.choices)
+        clipboard.setText(data)
+
+    def paste_choices(self):
+        import json
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        try:
+            new_choices = json.loads(text)
+            if isinstance(new_choices, list):
+                # Assign new IDs
+                for c in new_choices:
+                    c["id"] = str(uuid.uuid4())
+                
+                if self.undo_stack and self.node_model:
+                    final_list = self.choices + new_choices
+                    cmd = EditChoiceCommand(self.node_model, final_list, self.choices, self.data_changed)
+                    self.undo_stack.push(cmd)
+                    self.choices = final_list
+                    self.refresh_list()
+                    self.data_changed.emit()
+                else:
+                    self.choices.extend(new_choices)
+                    self.refresh_list()
+                    self.data_changed.emit()
+        except Exception as e:
+            print(f"Paste error: {e}")
 
 
 class TextVariantItemWidget(QFrame):
@@ -705,10 +847,11 @@ class InspectorPanel(QWidget):
     """
     data_changed = pyqtSignal() # Signal global pour rafraîchir la scène
 
-    def __init__(self):
+    def __init__(self, undo_stack=None):
         super().__init__()
         self.current_node_item = None
         self.project = None
+        self.undo_stack = undo_stack
         
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -807,7 +950,7 @@ class InspectorPanel(QWidget):
         self.layout_choices = QVBoxLayout(self.tab_choices)
         self.layout_choices.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        self.editor_choices = ChoiceEditorWidget()
+        self.editor_choices = ChoiceEditorWidget(undo_stack=self.undo_stack)
         self.editor_choices.data_changed.connect(self.on_choices_changed)
         self.layout_choices.addWidget(self.editor_choices)
         
@@ -873,7 +1016,7 @@ class InspectorPanel(QWidget):
         self.editor_on_enter.set_events(node_model.logic.get("on_enter", []), project=self.project)
         
         # Choices
-        self.editor_choices.set_choices(node_model.content.get("choices", []), project=self.project)
+        self.editor_choices.set_choices(node_model.content.get("choices", []), project=self.project, node_model=node_model)
         
         # Text
         self.txt_default_preview.setPlainText(node_model.content.get("text", ""))

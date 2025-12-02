@@ -3,7 +3,7 @@ import os
 from PyQt6.QtWidgets import (QMainWindow, QDockWidget, QToolBar,
                              QFileDialog, QMessageBox, QLabel)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QIcon, QUndoStack
 
 from src.core.models import ProjectModel, NodeModel
 from src.core.serializer import ProjectSerializer
@@ -30,14 +30,17 @@ class MainWindow(QMainWindow):
         """)
 
         self.project_path = None
+        
+        # 0. Undo Stack
+        self.undo_stack = QUndoStack(self)
 
         # 1. Initialiser la logique centrale (Scène & Vue)
-        self.scene = NodeScene(self)
+        self.scene = NodeScene(self, undo_stack=self.undo_stack)
         self.view = NodeGraphView(self.scene, self)
         self.setCentralWidget(self.view)
 
         # --- Inspecteur (Droite) ---
-        self.inspector = InspectorPanel()
+        self.inspector = InspectorPanel(undo_stack=self.undo_stack)
         self.dock_inspector = QDockWidget("Inspecteur", self)
         self.dock_inspector.setWidget(self.inspector)
         self.dock_inspector.setAllowedAreas(
@@ -71,6 +74,17 @@ class MainWindow(QMainWindow):
         act_load = QAction("Charger", self)
         act_load.triggered.connect(self.load_project_dialog)
         toolbar.addAction(act_load)
+
+        toolbar.addSeparator()
+        
+        # Actions Undo/Redo
+        act_undo = self.undo_stack.createUndoAction(self, "Annuler")
+        act_undo.setShortcut("Ctrl+Z")
+        toolbar.addAction(act_undo)
+        
+        act_redo = self.undo_stack.createRedoAction(self, "Refaire")
+        act_redo.setShortcut("Ctrl+Y")
+        toolbar.addAction(act_redo)
 
         toolbar.addSeparator()
 

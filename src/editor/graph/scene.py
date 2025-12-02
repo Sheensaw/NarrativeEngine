@@ -5,13 +5,14 @@ from typing import Optional
 
 from PyQt6.QtWidgets import QGraphicsScene
 from PyQt6.QtCore import Qt, QRectF, QLineF
-from PyQt6.QtGui import QColor, QPen, QPainter
+from PyQt6.QtGui import QColor, QPen, QPainter, QUndoStack
 
 from src.core.definitions import COLORS
 from src.editor.graph.node_item import NodeItem
 from src.editor.graph.edge_item import EdgeItem
 from src.editor.graph.group_item import GroupItem
 from src.core.models import ProjectModel, NodeModel, GroupModel
+from src.core.commands import MoveNodeCommand
 
 
 class NodeScene(QGraphicsScene):
@@ -19,14 +20,18 @@ class NodeScene(QGraphicsScene):
     Gère le contenu du graphe : Nœuds, Liens dynamiques et Grille de fond.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, undo_stack: QUndoStack = None):
         super().__init__(parent)
         self.project: Optional[ProjectModel] = None
+        self.undo_stack = undo_stack
 
         # Configuration de la scène
         self.scene_width = 64000
         self.scene_height = 64000
         self.setSceneRect(-self.scene_width // 2, -self.scene_height // 2, self.scene_width, self.scene_height)
+        
+        # Optimization: NoIndex is faster for dynamic scenes (moving items)
+        self.setItemIndexMethod(QGraphicsScene.ItemIndexMethod.NoIndex)
 
         # Style de la grille
         self.grid_size = 20
@@ -43,6 +48,37 @@ class NodeScene(QGraphicsScene):
         self.node_map = {}
         # List of current edges
         self.edges = []
+        
+        # Undo/Redo state
+        self._start_move_positions = {}
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._start_move_positions = {}
+            for item in self.selectedItems():
+                if isinstance(item, NodeItem):
+                    self._start_move_positions[item] = item.pos()
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.MouseButton.LeftButton and hasattr(self, '_start_move_positions') and self._start_move_positions:
+            nodes = []
+            old_pos_list = []
+            new_pos_list = []
+            
+            for item, old_pos in self._start_move_positions.items():
+                # Check if item still exists in scene (it might have been deleted)
+                if item.scene() == self and item.pos() != old_pos:
+                    nodes.append(item)
+                    old_pos_list.append(old_pos)
+                    new_pos_list.append(item.pos())
+            
+            if nodes and self.undo_stack:
+                cmd = MoveNodeCommand(nodes, new_pos_list, old_pos_list)
+                self.undo_stack.push(cmd)
+            
+            self._start_move_positions = {}
 
     def set_project(self, project: ProjectModel):
         """Charge un projet et peuple la scène."""
