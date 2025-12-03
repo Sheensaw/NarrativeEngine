@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QComboBox, QPushButton, 
     QScrollArea, QFrame, QCheckBox, QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
-    QTabWidget, QToolButton, QSizePolicy, QApplication, QListWidget, QListWidgetItem, QAbstractItemView
+    QTabWidget, QToolButton, QSizePolicy, QApplication, QListWidget, QListWidgetItem, QAbstractItemView, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation, QSize
 from PyQt6.QtGui import QUndoStack, QAction, QIcon
@@ -325,6 +325,7 @@ class ChoiceItemWidget(QFrame):
     removed = pyqtSignal()
     changed = pyqtSignal()
     copy_requested = pyqtSignal(dict)
+    paste_requested = pyqtSignal()
 
     def __init__(self, choice_data, project=None):
         super().__init__()
@@ -476,6 +477,12 @@ class ChoiceItemWidget(QFrame):
         action_copy.triggered.connect(lambda: self.copy_requested.emit(self.choice_data))
         menu.addAction(action_copy)
         
+        action_paste = QAction("Coller", self)
+        action_paste.triggered.connect(self.paste_requested.emit)
+        menu.addAction(action_paste)
+        
+        menu.addSeparator()
+
         action_delete = QAction("Supprimer", self)
         action_delete.triggered.connect(self.remove_self)
         menu.addAction(action_delete)
@@ -526,6 +533,7 @@ class ChoiceItemWidget(QFrame):
 class ChoiceListWidget(QListWidget):
     """QListWidget personnalisé pour gérer le Drag & Drop des choix."""
     order_changed = pyqtSignal()
+    paste_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -539,6 +547,13 @@ class ChoiceListWidget(QListWidget):
     def dropEvent(self, event):
         super().dropEvent(event)
         self.order_changed.emit()
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        action_paste = QAction("Coller", self)
+        action_paste.triggered.connect(self.paste_requested.emit)
+        menu.addAction(action_paste)
+        menu.exec(event.globalPos())
 
 
 class ChoiceEditorWidget(QWidget):
@@ -560,17 +575,12 @@ class ChoiceEditorWidget(QWidget):
         header_layout = QHBoxLayout()
         header_layout.addWidget(QLabel("<b>Choix</b>"))
         
-        # Global Paste Button (since we can't context menu on empty list easily)
-        self.btn_paste = QPushButton("Coller Choix")
-        self.btn_paste.setStyleSheet("background-color: #f0ad4e; padding: 3px;")
-        self.btn_paste.clicked.connect(self.paste_choices)
-        header_layout.addWidget(self.btn_paste)
-        
         layout.addLayout(header_layout)
         
         # List Widget for Drag & Drop
         self.list_widget = ChoiceListWidget()
         self.list_widget.order_changed.connect(self.on_order_changed)
+        self.list_widget.paste_requested.connect(self.paste_choices)
         layout.addWidget(self.list_widget)
         
         # Add Button
@@ -592,12 +602,13 @@ class ChoiceEditorWidget(QWidget):
 
     def _create_choice_item(self, choice_data):
         item = QListWidgetItem(self.list_widget)
-        item.setSizeHint(Qt.QSize(0, 0)) # Will be adjusted by widget
+        item.setSizeHint(QSize(0, 0)) # Will be adjusted by widget
         
         widget = ChoiceItemWidget(choice_data, self.project)
         widget.removed.connect(lambda: self.remove_choice(choice_data)) # Pass data, not widget
         widget.changed.connect(self.data_changed.emit)
         widget.copy_requested.connect(self.copy_choice)
+        widget.paste_requested.connect(self.paste_choices)
         
         self.list_widget.setItemWidget(item, widget)
         # Adjust size hint based on widget

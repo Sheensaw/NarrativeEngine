@@ -19,34 +19,34 @@
                     "image": null,
                     "choices": [
                         {
-                            "text": "Aller à la Scène 2",
-                            "target_node_id": "e83986b5-c4a3-4a56-819f-399a56863fef",
+                            "after_use": "delete",
                             "condition": "",
+                            "events": [],
                             "id": "06c3d65a-c9ec-41c0-9309-2f85cf1dab40",
                             "is_one_shot": false,
-                            "after_use": "delete",
                             "modify_text_enabled": false,
-                            "events": []
+                            "target_node_id": "e83986b5-c4a3-4a56-819f-399a56863fef",
+                            "text": "Aller à la Scène 2"
                         },
                         {
-                            "id": "553e1102-7b15-4bd2-a819-99b0f4598c24",
-                            "text": "Rester ici",
-                            "target_node_id": "",
-                            "condition": "",
-                            "is_one_shot": false,
                             "after_use": "delete",
+                            "condition": "",
                             "events": [],
-                            "modify_text_enabled": false
-                        },
-                        {
                             "id": "c0e47ebe-92ec-409d-b856-4cc1673e838f",
-                            "text": "Aller à la Scène 3",
-                            "target_node_id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
-                            "condition": "",
                             "is_one_shot": false,
+                            "modify_text_enabled": false,
+                            "target_node_id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
+                            "text": "Aller à la Scène 3"
+                        },
+                        {
                             "after_use": "delete",
+                            "condition": "",
                             "events": [],
-                            "modify_text_enabled": false
+                            "id": "553e1102-7b15-4bd2-a819-99b0f4598c24",
+                            "is_one_shot": false,
+                            "modify_text_enabled": false,
+                            "target_node_id": "",
+                            "text": "Rester ici"
                         }
                     ],
                     "coordinates": {
@@ -75,8 +75,8 @@
                 "id": "e83986b5-c4a3-4a56-819f-399a56863fef",
                 "type": "dialogue",
                 "title": "Scene 2",
-                "pos_x": -454.0,
-                "pos_y": -50.21521739130452,
+                "pos_x": -468.0,
+                "pos_y": -45.21521739130452,
                 "content": {
                     "text": "Vous trouvez un éclat d'osbsidienne.",
                     "image": null,
@@ -138,8 +138,8 @@
                 "id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
                 "type": "dialogue",
                 "title": "Scene 3",
-                "pos_x": -126.5,
-                "pos_y": -49.15000000000015,
+                "pos_x": -137.5,
+                "pos_y": -45.15000000000015,
                 "content": {
                     "text": "",
                     "image": null,
@@ -149,7 +149,29 @@
                         "y": 55.08,
                         "location_name": "Académie de l'Ostral",
                         "city": "Lorn"
-                    }
+                    },
+                    "choices": [
+                        {
+                            "id": "9102dd60-6aa5-4117-888b-5a1a2655e50b",
+                            "text": "Retour",
+                            "target_node_id": "cdfc8778-7ac7-4456-89a4-b68c75f209b9",
+                            "condition": "",
+                            "is_one_shot": false,
+                            "after_use": "delete",
+                            "events": [],
+                            "modify_text_enabled": false
+                        },
+                        {
+                            "text": "Aller à la Scène 2",
+                            "target_node_id": "e83986b5-c4a3-4a56-819f-399a56863fef",
+                            "condition": "",
+                            "id": "7980b60e-8e3e-4b49-9893-da8d2dcbe161",
+                            "is_one_shot": false,
+                            "after_use": "delete",
+                            "modify_text_enabled": false,
+                            "events": []
+                        }
+                    ]
                 },
                 "logic": {
                     "on_enter": [],
