@@ -55,6 +55,22 @@
                             "parameters": {
                                 "item_id": "eclat_obsidienne"
                             }
+                        },
+                        {
+                            "type": "addItem",
+                            "parameters": {
+                                "item_id": "kris_varnal"
+                            }
+                        },
+                        {
+                            "type": "addItem",
+                            "parameters": {
+                                "item_id": "flamberge_mercenaire"
+                            }
+                        },
+                        {
+                            "type": "addItem",
+                            "parameters": {}
                         }
                     ],
                     "on_exit": []
@@ -65,7 +81,7 @@
                 "id": "e83986b5-c4a3-4a56-819f-399a56863fef",
                 "type": "dialogue",
                 "title": "Scene 2",
-                "pos_x": -625.0,
+                "pos_x": -659.0,
                 "pos_y": 46.78478260869542,
                 "content": {
                     "text": "Vous trouvez un éclat d'osbsidienne.",

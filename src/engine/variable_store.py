@@ -11,6 +11,8 @@ class VariableStore:
             "dexterity": 10,
             "resistance": 0,
             "xp": 0,
+            "level": 1,
+            "xp_next": 100,
             "gold": 0,
             "inventory": {},
             "active_quests": [],
@@ -59,6 +61,30 @@ class VariableStore:
     def notify_all(self):
         for name, value in self._variables.items():
             self.notify(name, value)
+
+    def add_xp(self, amount: int):
+        current_xp = self.get_var("xp", 0)
+        current_lvl = self.get_var("level", 1)
+        xp_next = self.get_var("xp_next", 100)
+        
+        current_xp += amount
+        
+        leveled_up = False
+        while current_xp >= xp_next:
+            current_xp -= xp_next
+            current_lvl += 1
+            xp_next = int(current_lvl * 100 * 1.5) # Simple curve
+            leveled_up = True
+            
+        self.set_var("xp", current_xp)
+        self.set_var("level", current_lvl)
+        self.set_var("xp_next", xp_next)
+        
+        if leveled_up:
+            print(f"[Jeu] Niveau supérieur ! Niveau {current_lvl}")
+            # Optionally trigger an event or heal player here
+            max_hp = self.get_var("max_health", 100)
+            self.set_var("health", max_hp)
 
     def add_item(self, item_id: str, qty: int = 1):
         inv = self.get_var("inventory", {})

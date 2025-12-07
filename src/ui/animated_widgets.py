@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QTextEdit, QPushButton, QGraphicsOpacityEffect, QFrame, QApplication
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty, QSize, pyqtSignal, QTime
-from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor
+from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QCursor
+from .cursor_manager import CursorManager
 
 class FadeSyntaxHighlighter(QSyntaxHighlighter):
     def __init__(self, document, speed_per_char=15):
@@ -92,7 +93,17 @@ class FadeTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         self.setFrameShape(QFrame.Shape.NoFrame)
+        
+        # Cursor Force
+        if CursorManager._instance:
+            default = CursorManager._instance.get_cursor("default")
+            if default:
+                self.setCursor(default)
+                if self.viewport():
+                    self.viewport().setCursor(default)
+        
         self.full_text = ""
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._animate_step)

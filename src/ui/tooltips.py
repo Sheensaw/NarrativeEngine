@@ -135,7 +135,12 @@ class ItemTooltip(QWidget):
             
         self.stats_layout.addStretch()
 
-    def move_to_mouse(self):
-        cursor_pos = QCursor.pos()
-        # Offset slightly so it doesn't cover the mouse
-        self.move(cursor_pos + QPoint(15, 15))
+    def move_to_mouse(self, global_pos=None):
+        if global_pos:
+            cursor_pos = global_pos
+        else:
+            cursor_pos = QCursor.pos()
+            
+        # Offset to avoid covering with large cursor (64x64)
+        # Offset x=30, y=30 seems safer
+        self.move(cursor_pos + QPoint(30, 30))

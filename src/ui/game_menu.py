@@ -15,73 +15,225 @@ from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QPoint, QP
 # ==============================================================================
 from src.ui.tooltips import ItemTooltip
 
+class ThemedMenu(QMenu):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+         # Enforce PointingHandCursor for the entire menu to ensure custom cursor is used
+         # assuming global stylesheet sets QWidget { cursor: ... } or we set it explicitly if needed.
+         # But the user specifically asked for "gardent les curseur png".
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self.setStyleSheet("""
+            QMenu {
+                background-color: #1a1a1a;
+                color: #d4c59a; /* Dull Gold */
+                border: 1px solid #333;
+                font-family: 'Underdog';
+                font-size: 14px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 5px 20px;
+                border-radius: 2px;
+            }
+            QMenu::item:selected {
+                background-color: #333;
+                color: #d4c59a;
+            }
+        """)
+
 class InventorySlotWidget(QFrame):
-    def __init__(self, item_def, qty, assets_dir, is_equipped=False, tooltip_widget=None):
+    def __init__(self, item_def, qty, assets_dir, is_equipped=False, is_new=False, tooltip_widget=None, on_interaction_callback=None):
         super().__init__()
         self.item_def = item_def
         self.tooltip_widget = tooltip_widget
         self.assets_dir = assets_dir
+        self.is_new = is_new
+        self.on_interaction_callback = on_interaction_callback
         
-        self.setStyleSheet("""
-            InventorySlotWidget {
-                background-color: #222;
-                border: 1px solid #333;
-                border-radius: 6px;
-            }
-            InventorySlotWidget:hover {
-                border: 1px solid #b1a270;
-                background-color: #2a2a2a;
-            }
-        """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedSize(160, 60)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(180, 64)
+        self.setMouseTracking(True)
+        self.setMouseTracking(True)
+        # Main Widget is transparent container
+        self.setStyleSheet("background: transparent; border: none;")
         
-        # Horizontal Layout: Icon | Name
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(8)
-        layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # Inner Frame (Visual Box)
+        self.inner_frame = QFrame(self)
+        self.inner_frame.setMouseTracking(True)
+        self.inner_frame.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Pass events to Main
         
-        # 1. Icon
-        icon_name = "inventory.png" # Default
-        if item_def:
-            itype = item_def.type.lower()
-            if itype == "weapon": icon_name = "damages.png"
-            elif itype == "armor": icon_name = "defense.png"
-            elif itype == "consumable" or itype == "potion": icon_name = "health.png"
-            elif itype == "quest": icon_name = "quest.png"
-            elif itype == "gold" or itype == "currency": icon_name = "gold.png"
-            
-        icon_path = os.path.join(assets_dir, icon_name)
-        if os.path.exists(icon_path):
-            pix = QPixmap(icon_path)
-            pix = pix.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            lbl_icon = QLabel()
-            lbl_icon.setPixmap(pix)
-            lbl_icon.setStyleSheet("background: transparent; border: none;")
-            layout.addWidget(lbl_icon)
-        
-        # 2. Name
-        name_text = item_def.name if item_def else "Unknown"
-        if qty > 1:
-            name_text += f" ({qty})"
-            
-        self.lbl_name = QLabel(name_text)
-        self.lbl_name.setStyleSheet("color: #eee; font-weight: bold; font-family: 'Underdog'; font-size: 12px;")
-        self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.lbl_name.setWordWrap(True)
-        layout.addWidget(self.lbl_name)
-        
+        # Style Inner Frame
+        # Base: Obsidian (#080808) + Iron (#333)
+        # Equipped: Shadowed Gold (#141208) + Antique Gold (#7d7248)
         if is_equipped:
-            lbl_eq = QLabel("E")
-            lbl_eq.setStyleSheet("background-color: #2a5a2a; color: #fff; font-size: 10px; border-radius: 3px; padding: 1px 3px;")
-            lbl_eq.adjustSize()
-            lbl_eq.move(145, 5) # Top Right corner
-            lbl_eq.setParent(self)
-            lbl_eq.show()
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #141208; 
+                    border: 1px solid #7d7248;
+                    border-radius: 2px;
+                }
+            """)
+        else:
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #080808;
+                    border: 1px solid #333;
+                    border-radius: 2px;
+                }
+            """)
 
+        # Layout for Inner Frame (Text)
+        inner_layout = QVBoxLayout(self.inner_frame)
+        inner_layout.setContentsMargins(10, 8, 10, 8)
+        inner_layout.setSpacing(2)
+        
+        # 1. Name
+        # 1. Name
+        name_text = item_def.name if item_def else "Unknown"
+        self.lbl_name = QLabel(name_text)
+        self.lbl_name.setStyleSheet("color: #d4c59a; font-weight: bold; font-family: 'Underdog'; font-size: 12px; background: transparent; border: none;")
+        self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom)
+        self.lbl_name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.lbl_name.setWordWrap(True)
+        inner_layout.addWidget(self.lbl_name)
+        
+        # 2. Details
+        itype = item_def.type.lower()
+        type_map = {
+            "weapon": "Arme", "armor": "Armure",
+            "consumable": "Consommable", "potion": "Potion",
+            "quest": "Objet de Quête", "gold": "Or", "currency": "Monnaie",
+            "material": "Matériau", "junk": "Bric-à-brac"
+        }
+        details_text = type_map.get(itype, itype.capitalize())
+        details_text = type_map.get(itype, itype.capitalize())
+        lbl_details = QLabel(details_text)
+        lbl_details.setStyleSheet("color: #888; font-size: 11px; font-style: italic; background: transparent; border: none;")
+        lbl_details.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        lbl_details.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) 
+        inner_layout.addWidget(lbl_details)
+        
+        # --- Overlay Badges (Children of Main Widget, floating over InnerFrame) ---
+        
+        # New Badge (Dark Blood)
+        self.lbl_new = None
+        if self.is_new:
+            self.lbl_new = QLabel("NOUVEAU", self)
+            self.lbl_new.setStyleSheet("""
+                background-color: #4a0a0a; 
+                color: #d4c59a; 
+                font-size: 8px; 
+                font-family: 'Underdog';
+                border-radius: 0px; 
+                padding: 1px 4px;
+                min-width: 30px;
+                border: 1px solid #8a1c1c;
+            """)
+            self.lbl_new.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.lbl_new.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self.lbl_new.adjustSize()
+            self.lbl_new.show()
+
+        # Equipped Badge (Gold Tag)
+        self.lbl_eq = None
+        if is_equipped:
+            self.lbl_eq = QLabel("ÉQUIPÉ", self)
+            self.lbl_eq.setStyleSheet("""
+                background-color: #141208; 
+                color: #d4c59a; 
+                font-size: 8px; 
+                font-family: 'Underdog';
+                border-radius: 0px; 
+                padding: 1px 4px;
+                min-width: 30px;
+                border: 1px solid #7d7248;
+            """)
+            self.lbl_eq.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.lbl_eq.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self.lbl_eq.adjustSize()
+            self.lbl_eq.show()
+
+        # Stack Badge (Iron Tag)
+        self.lbl_count = None
+        if qty > 1:
+            self.lbl_count = QLabel(f"{qty}", self)
+            self.lbl_count.setStyleSheet("""
+                background-color: #1a1a1a; 
+                color: #aaa; 
+                font-size: 10px; 
+                font-weight: bold; 
+                border-radius: 0px; 
+                padding: 0px 4px;
+                min-width: 12px;
+                border: 1px solid #444;
+            """)
+            self.lbl_count.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            self.lbl_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.lbl_count.adjustSize()
+            self.lbl_count.show()
+        
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        
+        # Position Inner Frame with larger margin to allow "floating" badges
+        margin_x = 12
+        margin_y = 6
+        self.inner_frame.setGeometry(margin_x, margin_y, self.width() - 2*margin_x, self.height() - 2*margin_y)
+        
+        # Position Badges relative to OUTER container
+        # Do NOT push beyond self.width() or it clips.
+        # Right align with 0 or small positive padding.
+        
+        overlap_offset = 0
+        
+        if self.lbl_eq:
+            bw = self.lbl_eq.width()
+            self.lbl_eq.move(self.width() - bw - overlap_offset, 0)
+            self.lbl_eq.raise_()
+            if self.lbl_new: self.lbl_new.hide()
+            
+        elif self.lbl_new:
+            bw = self.lbl_new.width()
+            self.lbl_new.move(self.width() - bw - overlap_offset, 0)
+            self.lbl_new.raise_()
+            self.lbl_new.show()
+            
+        if self.lbl_count:
+            bw = self.lbl_count.width()
+            bh = self.lbl_count.height()
+            self.lbl_count.move(self.width() - bw - overlap_offset, self.height() - bh - 0)
+            self.lbl_count.raise_()
+            
     def enterEvent(self, event):
         super().enterEvent(event)
+        
+        # New Item Logic
+        if self.is_new and self.lbl_new and self.lbl_new.isVisible():
+            self.lbl_new.hide()
+            self.is_new = False
+            if self.on_interaction_callback:
+                self.on_interaction_callback(self.item_def.id)
+
+        # Hover effect on Inner Frame
+        if "141208" in self.inner_frame.styleSheet(): # Equipped
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #242218; 
+                    border: 1px solid #9d9268;
+                    border-radius: 2px;
+                }
+            """)
+        else:
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #1a1a1a; 
+                    border: 1px solid #777;
+                    border-radius: 2px;
+                }
+            """)
+            
         if self.tooltip_widget:
             self.tooltip_widget.update_data(self.item_def, self.assets_dir)
             self.tooltip_widget.move_to_mouse()
@@ -89,15 +241,79 @@ class InventorySlotWidget(QFrame):
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
+        # Restore Style
+        if self.lbl_eq: # Check existence of eq badge primarily means is_equipped
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #141208; 
+                    border: 1px solid #7d7248;
+                    border-radius: 2px;
+                }
+            """)
+        else:
+             self.inner_frame.setStyleSheet("""
+                QFrame {
+                    background-color: #080808;
+                    border: 1px solid #333;
+                    border-radius: 2px;
+                }
+            """)
+            
         if self.tooltip_widget:
             self.tooltip_widget.hide()
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         if self.tooltip_widget and self.tooltip_widget.isVisible():
-            self.tooltip_widget.move_to_mouse()
+            self.tooltip_widget.move_to_mouse(event.globalPosition().toPoint())
 
-# ... (QuestItemWidget remains unchanged) ...
+class QuestItemWidget(QFrame):
+    def __init__(self, quest, status, step_text):
+        super().__init__()
+        self.setStyleSheet("""
+            QFrame {
+                background-color: #080808;
+                border: 1px solid #333;
+                border-radius: 2px;
+                margin-bottom: 5px;
+            }
+        """)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Header: Title + Status
+        header_layout = QHBoxLayout()
+        
+        lbl_title = QLabel(quest.title)
+        lbl_title.setStyleSheet("color: #d4c59a; font-weight: bold; font-size: 14px; border: none; background: transparent;")
+        header_layout.addWidget(lbl_title)
+        
+        header_layout.addStretch()
+        
+        status_color = "#888"
+        if status == "active": status_color = "#ffcc80"
+        elif status == "completed": status_color = "#66bb6a"
+        
+        lbl_status = QLabel(status.upper())
+        # Color Logic: Active=Gold, Completed=Green
+        if status == "active": 
+            lbl_status.setStyleSheet(f"color: #d4c59a; font-size: 10px; font-weight: bold; border: 1px solid #7d7248; border-radius: 2px; padding: 2px 5px; background: transparent;")
+        elif status == "completed":
+            lbl_status.setStyleSheet(f"color: #5a835a; font-size: 10px; font-weight: bold; border: 1px solid #4caf50; border-radius: 2px; padding: 2px 5px; background: transparent;")
+        else:
+             lbl_status.setStyleSheet(f"color: #888; font-size: 10px; font-weight: bold; border: 1px solid #444; border-radius: 2px; padding: 2px 5px; background: transparent;")
+        
+        header_layout.addWidget(lbl_status)
+        
+        layout.addLayout(header_layout)
+        
+        # Step Text
+        if step_text:
+            lbl_step = QLabel(step_text)
+            lbl_step.setWordWrap(True)
+            lbl_step.setStyleSheet("color: #ccc; font-style: italic; margin-top: 5px; border: none; background: transparent;")
+            layout.addWidget(lbl_step)
 # ==============================================================================
 # MAIN MENU CLASS
 # ==============================================================================
@@ -127,9 +343,9 @@ class GameMenu(QWidget):
         self.panel.setFixedSize(900, 600)
         self.panel.setStyleSheet("""
             QFrame {
-                background-color: #161616;
+                background-color: #0f0f0f;
                 border: 1px solid #444;
-                border-radius: 8px;
+                border-radius: 2px;
             }
         """)
         
@@ -143,10 +359,10 @@ class GameMenu(QWidget):
         self.sidebar.setFixedWidth(220)
         self.sidebar.setStyleSheet("""
             QWidget {
-                background-color: #1b1b1b;
+                background-color: #161616;
                 border-right: 1px solid #333;
-                border-top-left-radius: 8px;
-                border-bottom-left-radius: 8px;
+                border-top-left-radius: 2px;
+                border-bottom-left-radius: 2px;
             }
             QLabel { background: transparent; border: none; color: #666; font-weight: bold; padding: 10px; }
         """)
@@ -161,6 +377,9 @@ class GameMenu(QWidget):
         lbl_menu.setStyleSheet("font-size: 18px; color: #888; letter-spacing: 2px; margin-bottom: 20px;")
         sidebar_layout.addWidget(lbl_menu)
         
+        # New Item Logic (Session based)
+        self.seen_items = set()
+
         self.btn_group = []
 
         # Navigation Buttons
@@ -171,23 +390,27 @@ class GameMenu(QWidget):
         
         sidebar_layout.addStretch()
         
-        # Close Button (Bottom of sidebar)
-        btn_close = QPushButton("Retour au Jeu")
+        # Close Button (Bottom of sidebar) - Professional Footer Style
+        btn_close = QPushButton("RETOUR AU JEU")
         btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_close.clicked.connect(self.hide_menu)
-        btn_close.setFixedHeight(50)
+        btn_close.setFixedHeight(45)
         btn_close.setStyleSheet("""
             QPushButton {
-                background-color: #2a2a2a;
-                color: #aaa;
+                background-color: #0c0c0c;
+                color: #888;
                 border: none;
                 border-top: 1px solid #333;
                 font-weight: bold;
+                font-size: 12px;
+                letter-spacing: 2px;
                 text-align: center;
+                border-bottom-left-radius: 2px;
             }
             QPushButton:hover {
-                background-color: #c42b1c;
-                color: white;
+                background-color: #4a0a0a;
+                color: #d4c59a;
+                border-top: 1px solid #8a1c1c;
             }
         """)
         sidebar_layout.addWidget(btn_close)
@@ -202,7 +425,7 @@ class GameMenu(QWidget):
         
         # Header for Content (Dynamic Title)
         self.lbl_page_title = QLabel("INVENTAIRE")
-        self.lbl_page_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #eee; margin-bottom: 10px; font-family: 'Underdog';")
+        self.lbl_page_title.setStyleSheet("font-size: 22px; font-weight: bold; color: #eee; margin-bottom: 10px; font-family: 'Underdog'; letter-spacing: 2px;")
         content_layout.addWidget(self.lbl_page_title)
         
         # Stacked Widget
@@ -238,18 +461,19 @@ class GameMenu(QWidget):
         btn = QPushButton(text)
         btn.setCheckable(True)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setFixedHeight(50)
+        btn.setFixedHeight(40)
         btn.clicked.connect(lambda: self.switch_tab(index))
         btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
-                color: #888;
+                color: #666;
                 border: none;
-                border-left: 3px solid transparent;
-                font-size: 14px;
+                border-left: 2px solid transparent;
+                font-size: 13px;
                 text-align: left;
-                padding-left: 30px;
+                padding-left: 25px;
                 font-weight: bold;
+                letter-spacing: 1px;
             }
             QPushButton:hover {
                 background-color: #222;
@@ -257,8 +481,8 @@ class GameMenu(QWidget):
             }
             QPushButton:checked {
                 background-color: #262626;
-                color: #fff;
-                border-left: 3px solid #b1a270;
+                color: #d4c59a;
+                border-left: 2px solid #7d7248;
             }
         """)
         layout.addWidget(btn)
@@ -339,18 +563,20 @@ class GameMenu(QWidget):
         # Grid Layout
         self.inv_grid = QGridLayout(self.inv_container)
         self.inv_grid.setContentsMargins(0, 0, 0, 0)
-        self.inv_grid.setSpacing(10)
-        self.inv_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.inv_grid.setSpacing(8)
+        self.inv_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         
         # Scroll Area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff) # Force Vertical Only
         scroll.setWidget(self.inv_container)
         scroll.setStyleSheet("""
             QScrollArea { border: none; background: transparent; }
-            QScrollBar:vertical { background: #1a1a1a; width: 8px; margin: 0; }
-            QScrollBar::handle:vertical { background: #444; min-height: 20px; border-radius: 4px; }
+            QScrollBar:vertical { background: #111; width: 6px; margin: 0; }
+            QScrollBar::handle:vertical { background: #444; min-height: 20px; border-radius: 2px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            QScrollBar:horizontal { height: 0px; background: transparent; }
         """)
         
         # Main layout for the view page
@@ -382,7 +608,7 @@ class GameMenu(QWidget):
         equipped_ids = set(equipped_data.values())
 
         row, col = 0, 0
-        cols_per_row = 4
+        cols_per_row = 3
         
         if not inv_data:
             lbl_empty = QLabel("Inventaire vide.")
@@ -391,11 +617,34 @@ class GameMenu(QWidget):
             self.inv_grid.addWidget(lbl_empty, 0, 0, 1, cols_per_row)
             return
 
-        for item_id, qty in inv_data.items():
+        # Sorting Logic
+        def sort_key(item_tuple):
+            i_id = item_tuple[0]
+            item_def = project_items.get(i_id)
+            if not item_def: return (999, "")
+            
+            # Type Priority
+            type_order = {
+                "weapon": 0,
+                "armor": 1,
+                "potion": 2,
+                "consumable": 3,
+                "material": 4,
+                "quest": 5,
+                "gold": 6, "currency": 6,
+                "junk": 99
+            }
+            t_order = type_order.get(item_def.type.lower(), 50)
+            return (t_order, item_def.name)
+
+        sorted_items = sorted(inv_data.items(), key=sort_key)
+
+        for item_id, qty in sorted_items:
             item_def = project_items.get(item_id)
             is_equipped = item_id in equipped_ids
+            is_new = item_id not in self.seen_items
             
-            slot = InventorySlotWidget(item_def, qty, assets_dir, is_equipped, self.item_tooltip)
+            slot = InventorySlotWidget(item_def, qty, assets_dir, is_equipped, is_new, self.item_tooltip, self.mark_as_seen)
             # Add context menu support
             slot.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             slot.customContextMenuRequested.connect(lambda pos, i=item_id, d=item_def: self.show_slot_context_menu(pos, i, d))
@@ -410,22 +659,43 @@ class GameMenu(QWidget):
     def show_slot_context_menu(self, pos, item_id, item_def):
         if not item_def: return
         
-        menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu { background-color: #2a2a2a; color: #eee; border: 1px solid #444; }
-            QMenu::item { padding: 5px 20px; }
-            QMenu::item:selected { background-color: #3a3a3a; }
-        """)
+        # Use ThemedMenu for Custom Cursor and Style
+        menu = ThemedMenu(self)
+        
+        equipped_data = self.story_manager.variables.get_var("equipped", {})
+        if not isinstance(equipped_data, dict): equipped_data = {}
+        
+        # Check if equipped (value of any slot)
+        equipped_slot = None
+        for slot, i_id in equipped_data.items():
+            if i_id == item_id:
+                equipped_slot = slot
+                break
         
         if item_def.type in ["weapon", "armor"]:
-            action_equip = menu.addAction("Je m'équipe")
-            action_equip.triggered.connect(lambda: self.equip_item(item_id, item_def))
+            if equipped_slot:
+                action_unequip = menu.addAction("Déséquiper")
+                action_unequip.triggered.connect(lambda: self.unequip_item(equipped_slot))
+                # Refresh inventory also needed after unequip, unequip_item only refreshes equipment view
+                # We should update unequip_item to refresh current view if needed? 
+                # Or just call refresh_current_view here? 
+                # unequip_item calls refresh_equipment. If we are in inventory view, we need refresh_inventory.
+                # Let's verify unequip_item or just chain the call.
+                action_unequip.triggered.connect(self.refresh_inventory)
+            else:
+                action_equip = menu.addAction("Équiper")
+                action_equip.triggered.connect(lambda: self.equip_item(item_id, item_def))
             
         # We need to map the global position correctly because 'pos' is relative to the slot widget
         sender_widget = self.sender()
         if sender_widget:
             global_pos = sender_widget.mapToGlobal(pos)
             menu.exec(global_pos)
+
+    def mark_as_seen(self, item_id):
+        if item_id not in self.seen_items:
+            self.seen_items.add(item_id)
+            # Optional: Persist this state if needed/requested
 
     def equip_item(self, item_id, item_def):
         slot = "weapon"
@@ -452,11 +722,20 @@ class GameMenu(QWidget):
         
         container = QWidget()
         container.setStyleSheet("background: transparent;")
+        container.setFixedWidth(600) # Centered Fixed Width
+        
         self.layout_slots = QVBoxLayout(container)
         self.layout_slots.setSpacing(10)
         self.layout_slots.setContentsMargins(0, 0, 0, 0)
         
-        scroll.setWidget(container)
+        # Wrapper to center the container
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+        wrapper_layout.addWidget(container)
+        
+        scroll.setWidget(wrapper)
         layout.addWidget(scroll)
 
     def refresh_equipment(self):
@@ -478,7 +757,7 @@ class GameMenu(QWidget):
             item_id = equipped.get(slot)
             
             slot_widget = QFrame()
-            slot_widget.setStyleSheet("background-color: #222; border: 1px solid #333; border-radius: 6px;")
+            slot_widget.setStyleSheet("background-color: #080808; border: 1px solid #333; border-radius: 2px;")
             slot_layout = QHBoxLayout(slot_widget)
             slot_layout.setContentsMargins(15, 15, 15, 15)
             
@@ -490,7 +769,7 @@ class GameMenu(QWidget):
                 item_def = project_items.get(item_id)
                 name = item_def.name if item_def else item_id
                 lbl_item = QLabel(name)
-                lbl_item.setStyleSheet("color: #eee; font-weight: bold; font-size: 15px;")
+                lbl_item.setStyleSheet("color: #d4c59a; font-weight: bold; font-size: 15px;")
                 slot_layout.addWidget(lbl_item)
                 
                 slot_layout.addStretch()
@@ -529,8 +808,8 @@ class GameMenu(QWidget):
         """)
         # Scroll Bar Styling
         self.quests_list.verticalScrollBar().setStyleSheet("""
-            QScrollBar:vertical { background: #1a1a1a; width: 8px; margin: 0; }
-            QScrollBar::handle:vertical { background: #444; min-height: 20px; border-radius: 4px; }
+            QScrollBar:vertical { background: #111; width: 6px; margin: 0; }
+            QScrollBar::handle:vertical { background: #444; min-height: 20px; border-radius: 2px; }
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
         layout.addWidget(self.quests_list)

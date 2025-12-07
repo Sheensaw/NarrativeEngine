@@ -295,7 +295,20 @@ class EventEditorWidget(QWidget):
         self.structure_changed.connect(self._reload_from_model)
         self.structure_changed.connect(self.data_changed.emit)
         
-        layout = QVBoxLayout(self)
+        # Signal for structural changes (Add/Remove)
+        self.structure_changed.connect(self._reload_from_model)
+        self.structure_changed.connect(self.data_changed.emit)
+        
+        # layout is already defined above, but we can just continue using it.
+        # Actually, let's look at lines 291 and 298.
+        # 291: layout = QVBoxLayout(self)
+        # 292: layout.setContentsMargins(0, 0, 0, 0)
+        # ...
+        # 298: layout = QVBoxLayout(self) <-- ERROR
+        
+        # We will remove the first assignment logic block if it's redundant or just keep one.
+        # Line 291 initiates it. Lines 294-297 do connections. Line 298 initiates it AGAIN.
+        # Clean solution: Remove line 298.
         layout.setContentsMargins(0, 0, 0, 0)
         
         # Zone de défilement pour les événements

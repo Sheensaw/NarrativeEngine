@@ -13,6 +13,7 @@ from src.core.serializer import ProjectSerializer
 from src.engine.story_manager import StoryManager
 from src.core.database import DatabaseManager
 from src.ui.game_menu import GameMenu
+from src.ui.cursor_manager import setup_cursors
 from src.ui.animated_widgets import FadeTextEdit
 
 class QuestOfferDialog(QDialog):
@@ -23,6 +24,13 @@ class QuestOfferDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(500, 450)
+        
+        # Cursor Force
+        from src.ui.cursor_manager import CursorManager
+        if CursorManager._instance:
+            default = CursorManager._instance.get_cursor("default")
+            if default:
+                self.setCursor(default)
         
         # Main Layout
         main_layout = QVBoxLayout(self)
@@ -73,6 +81,7 @@ class QuestOfferDialog(QDialog):
         # Presentation Text
         txt_desc = QTextEdit()
         txt_desc.setReadOnly(True)
+        txt_desc.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         txt_desc.setPlainText(quest.presentation_text if quest.presentation_text else quest.description)
         content_layout.addWidget(txt_desc)
         
@@ -115,16 +124,8 @@ class QuestOfferDialog(QDialog):
         btn_layout.addWidget(btn_accept)
         content_layout.addLayout(btn_layout)
 
-    # Enable moving the window by dragging
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-            event.accept()
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() & Qt.MouseButton.LeftButton:
-            self.move(event.globalPosition().toPoint() - self.drag_pos)
-            event.accept()
+    # Fixed window, no dragging logic
+    pass
 
 class PlayerWindow(QMainWindow):
     def __init__(self, project_file=None):
@@ -250,6 +251,55 @@ class PlayerWindow(QMainWindow):
         
         # --- HUD Elements (Native Widgets) ---
         assets_dir = os.path.join(os.path.dirname(__file__), "src", "assets", "icons")
+        
+        # --- Level Gauge (Center Left) ---
+        self.hud_level_container = QWidget()
+        hud_lvl_layout = QHBoxLayout(self.hud_level_container)
+        hud_lvl_layout.setContentsMargins(0, 0, 20, 0)
+        hud_lvl_layout.setSpacing(10)
+        
+        self.lbl_cur_lvl = QLabel("1")
+        self.lbl_cur_lvl.setStyleSheet("color: #b1a270; font-weight: bold; font-size: 14px;")
+        
+        self.xp_bar = QFrame()
+        self.xp_bar.setFixedSize(120, 8)
+        self.xp_bar.setStyleSheet("""
+            QFrame {
+                background-color: #222;
+                border: 1px solid #444;
+                border-radius: 4px;
+            }
+        """)
+        # We will use an inner frame for the fill or just a progress bar. 
+        # Using a QProgressBar is easier but generic style is tricky. 
+        # Let's use a simple inner frame logic or a QProgressBar with custom style.
+        # Custom QProgressBar is standard.
+        from PyQt6.QtWidgets import QProgressBar
+        self.xp_progress = QProgressBar()
+        self.xp_progress.setFixedSize(120, 8)
+        self.xp_progress.setTextVisible(False)
+        self.xp_progress.setStyleSheet("""
+            QProgressBar {
+                background-color: #1a1a1a;
+                border: 1px solid #444;
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background-color: #b1a270;
+                border-radius: 3px;
+            }
+        """)
+        self.xp_progress.setRange(0, 100)
+        self.xp_progress.setValue(0)
+        
+        self.lbl_next_lvl = QLabel("2")
+        self.lbl_next_lvl.setStyleSheet("color: #666; font-size: 12px;")
+        
+        hud_lvl_layout.addWidget(self.lbl_cur_lvl)
+        hud_lvl_layout.addWidget(self.xp_progress)
+        hud_lvl_layout.addWidget(self.lbl_next_lvl)
+        
+        top_layout.addWidget(self.hud_level_container)
 
         # Stats Group
         stats_layout = QHBoxLayout()
@@ -403,6 +453,8 @@ class PlayerWindow(QMainWindow):
         """Met à jour l'interface quand une variable change."""
         if name in self.stat_labels:
             self.stat_labels[name].setText(str(value))
+        elif name == "xp" or name == "level" or name == "xp_next":
+            self.update_xp_hud()
         elif name == "max_health":
              pass
         elif name == "player_coordinates":
@@ -602,6 +654,21 @@ class PlayerWindow(QMainWindow):
                 self.stat_labels[name].setText(str(val))
             elif name == "location_text":
                 self.update_location_label()
+        
+        self.update_xp_hud()
+                
+    def update_xp_hud(self):
+        xp = self.story_manager.variables.get_var("xp", 0)
+        lvl = self.story_manager.variables.get_var("level", 1)
+        xp_next = self.story_manager.variables.get_var("xp_next", 100)
+        
+        self.lbl_cur_lvl.setText(f"{lvl}")
+        self.lbl_next_lvl.setText(f"{lvl + 1}")
+        
+        if hasattr(self, 'xp_progress'):
+            self.xp_progress.setRange(0, xp_next)
+            self.xp_progress.setValue(xp)
+            self.xp_progress.setToolTip(f"XP: {xp} / {xp_next}")
 
     def update_location_label(self):
         vars = self.story_manager.variables
@@ -634,13 +701,26 @@ class PlayerWindow(QMainWindow):
         self.story_manager.variables.hide_quest_offer()
 
 
+from src.ui.cursor_manager import setup_cursors, CursorManager
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+
+    # Setup Custom Cursors - Initialize Manager
+    setup_cursors(app)
 
     project_file = None
     if len(sys.argv) > 1:
         project_file = sys.argv[1]
 
     window = PlayerWindow(project_file)
+    
+    # Apply Default Cursor Explicitly to Main Window
+    manager = CursorManager._instance
+    if manager:
+        default_cursor = manager.get_cursor("default")
+        if default_cursor:
+            window.setCursor(default_cursor)
+            
     window.show()
     sys.exit(app.exec())
