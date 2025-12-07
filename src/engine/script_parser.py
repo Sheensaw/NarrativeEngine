@@ -12,8 +12,13 @@ class ScriptParser:
 
     def __init__(self, variable_store: VariableStore):
         self.store = variable_store
+        self.project = None # Pour accéder aux définitions de quêtes/items
         # Regex pour trouver les motifs ${nom_variable}
         self.var_pattern = re.compile(r'\$\{([a-zA-Z0-9_]+)\}')
+
+    def set_project(self, project):
+        """Injecte le modèle projet pour accéder aux données statiques (Quêtes, Items)."""
+        self.project = project
 
     def parse_text(self, text: str, extra_context: Dict[str, Any] = None) -> str:
         """
@@ -92,6 +97,8 @@ class ScriptParser:
             
             # Parsing basique (séparation par espaces, en respectant les guillemets)
             # Regex pour capturer : mot ou "chaine avec espaces"
+            # parts = [p.strip('"') for p in re.findall(r'(?:[^\s"]+|"[^"]*")+', content)]
+            # Correction regex to handle quotes properly
             parts = [p.strip('"') for p in re.findall(r'(?:[^\s"]+|"[^"]*")+', content)]
             
             if not parts:
@@ -147,6 +154,16 @@ class ScriptParser:
                 if len(args) >= 1:
                     quest_id = args[0]
                     self.store.complete_quest(quest_id)
+
+            elif command == "showQuest":
+                if len(args) >= 1:
+                    quest_id = args[0]
+                    self.store.show_quest(quest_id)
+
+            elif command == "returnQuest":
+                if len(args) >= 1:
+                    quest_id = args[0]
+                    self._handle_return_quest(quest_id)
                     
             else:
                 print(f"[ScriptParser] Commande inconnue : {command}")
@@ -184,12 +201,64 @@ class ScriptParser:
                 quest_id = params.get("quest_id")
                 if quest_id:
                     self.store.complete_quest(quest_id)
+
+            elif ev_type == "advanceQuest" or ev_type == "advance_quest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.advance_quest_step(quest_id)
+
+            elif ev_type == "showQuest" or ev_type == "show_quest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self.store.show_quest(quest_id)
+
+            elif ev_type == "returnQuest" or ev_type == "return_quest":
+                quest_id = params.get("quest_id")
+                if quest_id:
+                    self._handle_return_quest(quest_id)
                     
             else:
                 print(f"[ScriptParser] Événement inconnu : {ev_type}")
 
         except Exception as e:
             print(f"[ScriptParser] Erreur exécution événement '{ev_type}': {e}")
+
+    def _handle_return_quest(self, quest_id: str):
+        """Gère la logique de rendu de quête (Loot + État)."""
+        # 1. Update State
+        self.store.return_quest(quest_id)
+        
+        # 2. Give Loot
+        if not self.project:
+            print("[ScriptParser] Warning: Project not set, cannot give quest loot.")
+            return
+
+        quest = self.project.quests.get(quest_id)
+        if not quest:
+            print(f"[ScriptParser] Warning: Quest {quest_id} not found.")
+            return
+
+        loot = quest.loot
+        if not loot: return
+
+        # XP
+        xp = loot.get("xp", 0)
+        if xp > 0:
+            current_xp = self.store.get_var("xp", 0)
+            self.store.set_var("xp", current_xp + xp)
+            print(f"[Jeu] Gain XP : {xp}")
+
+        # Gold
+        gold = loot.get("gold", 0)
+        if gold > 0:
+            current_gold = self.store.get_var("gold", 0)
+            self.store.set_var("gold", current_gold + gold)
+            print(f"[Jeu] Gain Or : {gold}")
+
+        # Items
+        items = loot.get("items", {})
+        for item_id, qty in items.items():
+            self.store.add_item(item_id, qty)
 
     def _parse_value(self, val_str: str) -> Any:
         """Tente de convertir une string en int/float/bool, sinon garde string."""

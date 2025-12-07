@@ -110,33 +110,6 @@ class ItemModel:
 
 
 @dataclass
-class QuestModel:
-    """
-    Représente une quête.
-    """
-    id: str = field(default_factory=generate_id)
-    title: str = "Nouvelle Quête"
-    description: str = ""
-    steps: List[str] = field(default_factory=list)  # Liste d'objectifs textuels
-    rewards: Dict[str, Any] = field(default_factory=lambda: {"gold": 0, "items": []})
-    is_main_quest: bool = False
-
-    def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'QuestModel':
-        return QuestModel(
-            id=data.get("id", generate_id()),
-            title=data.get("title", "Nouvelle Quête"),
-            description=data.get("description", ""),
-            steps=data.get("steps", []),
-            rewards=data.get("rewards", {"gold": 0, "items": []}),
-            is_main_quest=data.get("is_main_quest", False)
-        )
-
-
-@dataclass
 class GroupModel:
     """
     Représente un groupe visuel de nœuds (ex: une zone géographique).
@@ -197,6 +170,36 @@ class LocationModel:
             continent=data.get("continent", "Eldaron"),
             source_file=data.get("source_file", ""),
             properties=data.get("properties", {})
+        )
+
+
+@dataclass
+class QuestModel:
+    id: str = field(default_factory=generate_id)
+    title: str = "Nouvelle Quête"
+    description: str = ""
+    presentation_text: str = ""
+    status: str = "not_started" # not_started, started, completed, returned
+    loot: Dict[str, Any] = field(default_factory=lambda: {"xp": 0, "items": {}, "gold": 0})
+    steps: List[str] = field(default_factory=list)
+    return_scene_id: str = "" # Node ID where the quest can be returned
+    is_main_quest: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'QuestModel':
+        return QuestModel(
+            id=data.get("id", generate_id()),
+            title=data.get("title", "Nouvelle Quête"),
+            description=data.get("description", ""),
+            presentation_text=data.get("presentation_text", ""),
+            status=data.get("status", "not_started"),
+            loot=data.get("loot", {"xp": 0, "items": {}, "gold": 0}),
+            steps=data.get("steps", []),
+            return_scene_id=data.get("return_scene_id", ""),
+            is_main_quest=data.get("is_main_quest", False)
         )
 
 

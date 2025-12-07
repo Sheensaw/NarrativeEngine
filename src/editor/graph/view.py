@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QGraphicsView, QMenu, QInputDialog
+from PyQt6.QtWidgets import QGraphicsView, QMenu, QInputDialog, QApplication, QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox, QGraphicsTextItem, QGraphicsProxyWidget
 from PyQt6.QtCore import Qt, QEvent, QRectF
 from PyQt6.QtGui import QPainter, QMouseEvent, QAction, QCursor
 
@@ -8,6 +8,10 @@ from src.editor.graph.group_item import GroupItem
 from src.core.models import NodeModel, NodeType, GroupModel
 from src.editor.dialogs.location_dialog import LocationDialog
 from src.core.database import DatabaseManager
+from src.core.commands import (
+    AddNodeCommand, RemoveNodeCommand, MoveNodeCommand, 
+    AddGroupCommand, RemoveGroupCommand, BatchEditNodePropertyCommand
+)
 import uuid
 
 MODE_NOOP = 1
@@ -94,7 +98,72 @@ class NodeGraphView(QGraphicsView):
             self.setCursor(Qt.CursorShape.ArrowCursor)
             return
 
+            return
+
         super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        """Gestion des raccourcis clavier."""
+        # Delete
+        if event.key() == Qt.Key.Key_Delete:
+            self.delete_selection()
+            event.accept()
+        
+        # Focus Selection (F)
+        elif event.key() == Qt.Key.Key_F:
+            # 1. Check Widget Focus
+            fw = QApplication.focusWidget()
+            print(f"DEBUG: 'F' pressed. View: {self} | Focus Widget: {fw} ({type(fw)}) | Viewport: {self.viewport()}")
+            
+            # If focus is NOT the view/viewport, ignore F.
+            if fw is not None and fw is not self and fw is not self.viewport():
+                super().keyPressEvent(event)
+                return
+                # One exception: If the focus widget is a child of the view but NOT an editor?
+                # Generally, if focus is elsewhere, don't pan/focus graph.
+                super().keyPressEvent(event)
+                return
+
+            # Keep type checking just in case (e.g. if fw IS self.viewport but editing an item?)
+            if isinstance(fw, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox)):
+                super().keyPressEvent(event)
+                return
+
+            # 2. Check Scene Item Focus (Node Titles, Proxy Widgets, etc.)
+            # If ANY item has focus on the scene, we should not steal the keystroke.
+            fi = self.scene().focusItem()
+            if fi is not None:
+                super().keyPressEvent(event)
+                return
+
+            self.focus_selection()
+            event.accept()
+            
+        # Select All (Ctrl+A)
+        elif event.key() == Qt.Key.Key_A and (event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            path = QPainterPath()
+            path.addRect(self.scene().itemsBoundingRect())
+            self.scene().setSelectionArea(path)
+            event.accept()
+            
+        else:
+            super().keyPressEvent(event)
+
+    def focus_selection(self):
+        """Centre la vue sur la sélection ou sur tout si rien n'est sélectionné."""
+        selected = self.scene().selectedItems()
+        if selected:
+            # Calculate bounding rect of selection
+            rect = QRectF()
+            for item in selected:
+                rect = rect.united(item.sceneBoundingRect())
+            self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
+            # Zoom out a bit if too close
+            if self.transform().m11() > 1.5:
+                self.scale(1/self.transform().m11() * 1.5, 1/self.transform().m11() * 1.5)
+        else:
+            # Fit all
+            self.fitInView(self.scene().itemsBoundingRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def contextMenuEvent(self, event):
         """Menu contextuel pour supprimer des nœuds."""
@@ -164,8 +233,13 @@ class NodeGraphView(QGraphicsView):
             pos_x=scene_pos.x(),
             pos_y=scene_pos.y()
         )
-        self.scene().project.add_node(new_node)
-        self.scene().add_node_item(new_node)
+        
+        if self.scene().undo_stack is not None:
+            cmd = AddNodeCommand(self.scene(), new_node)
+            self.scene().undo_stack.push(cmd)
+        else:
+            self.scene().project.add_node(new_node)
+            self.scene().add_node_item(new_node)
 
     def align_selection(self, direction):
         """Aligne les nœuds sélectionnés."""
@@ -178,34 +252,53 @@ class NodeGraphView(QGraphicsView):
         if direction == "horizontal":
             # Align to the average Y
             avg_y = sum(n.y() for n in nodes) / len(nodes)
-            for n in nodes:
-                n.setY(avg_y)
-                # Update model
-                n.model.pos_y = avg_y
+            new_positions = [n.pos() for n in nodes]
+            for i, n in enumerate(nodes):
+                new_positions[i].setY(avg_y)
                 
         elif direction == "vertical":
             # Align to the average X
             avg_x = sum(n.x() for n in nodes) / len(nodes)
-            for n in nodes:
-                n.setX(avg_x)
-                # Update model
-                n.model.pos_x = avg_x
+            new_positions = [n.pos() for n in nodes]
+            for i, n in enumerate(nodes):
+                new_positions[i].setX(avg_x)
                 
-        # Force redraw of edges
-        self.scene().refresh_connections()
+        if self.scene().undo_stack is not None:
+            old_positions = [n.pos() for n in nodes]
+            cmd = MoveNodeCommand(nodes, new_positions, old_positions)
+            self.scene().undo_stack.push(cmd)
+        else:
+            # Fallback
+            for i, n in enumerate(nodes):
+                n.setPos(new_positions[i])
+                n.model.pos_x = new_positions[i].x()
+                n.model.pos_y = new_positions[i].y()
+            self.scene().refresh_connections()
 
     def delete_selection(self):
         """Supprime les éléments sélectionnés de la scène et du modèle."""
-        for item in self.scene().selectedItems():
-            if isinstance(item, NodeItem):
-                # Supprimer du modèle
+        selected = self.scene().selectedItems()
+        nodes = [i for i in selected if isinstance(i, NodeItem)]
+        groups = [i for i in selected if isinstance(i, GroupItem)]
+        
+        if self.scene().undo_stack is not None:
+            if nodes:
+                cmd = RemoveNodeCommand(self.scene(), nodes)
+                self.scene().undo_stack.push(cmd)
+            if groups:
+                cmd = RemoveGroupCommand(self.scene(), groups)
+                self.scene().undo_stack.push(cmd)
+        else:
+            for item in nodes:
                 if self.scene().project:
                     self.scene().project.remove_node(item.model.id)
-                # Supprimer de la scène
                 self.scene().removeItem(item)
-        
-        # Refresh connections after deletion
-        self.scene().refresh_connections()
+            for item in groups:
+                if self.scene().project:
+                    self.scene().project.remove_group(item.model.id)
+                self.scene().removeItem(item)
+            
+            self.scene().refresh_connections()
 
     def create_comment_from_selection(self):
         """Crée un groupe visuel (Commentaire) autour des nœuds sélectionnés."""
@@ -242,9 +335,13 @@ class NodeGraphView(QGraphicsView):
         )
         
         # 4. Add to Project & Scene
-        if self.scene().project:
-            self.scene().project.add_group(group_model)
-            self.scene().add_group_item(group_model)
+        if self.scene().undo_stack is not None:
+            cmd = AddGroupCommand(self.scene(), group_model)
+            self.scene().undo_stack.push(cmd)
+        else:
+            if self.scene().project:
+                self.scene().project.add_group(group_model)
+                self.scene().add_group_item(group_model)
             
         print(f"Comment group created: {title}")
 
@@ -265,18 +362,40 @@ class NodeGraphView(QGraphicsView):
             data = dialog.get_data()
             
             # Update all selected nodes
-            for node_item in nodes:
-                coords = node_item.model.content.get("coordinates", {})
-                coords["continent"] = data["continent"]
-                coords["x"] = data["x"]
-                coords["y"] = data["y"]
-                coords["location_name"] = data["location_name"]
-                coords["city"] = data["city"]
+            # Update all selected nodes
+            if self.scene().undo_stack is not None:
+                old_values = {}
+                for node in nodes:
+                    old_values[node.model.id] = node.model.content.get("coordinates", {}).copy()
                 
-                node_item.model.content["coordinates"] = coords
+                # Prepare new value (we need to construct the full dict for each, but here we apply same data)
+                # BatchEditNodePropertyCommand expects a single value if property_path is simple, 
+                # but for nested dicts we might need to be careful.
+                # Actually, our command replaces the target key.
+                # Let's use a simpler approach: update the whole 'coordinates' dict.
                 
-                # Update visual display
-                node_item.update_location_display()
+                new_coords = {
+                    "continent": data["continent"],
+                    "x": data["x"],
+                    "y": data["y"],
+                    "location_name": data["location_name"],
+                    "city": data["city"]
+                }
+                
+                cmd = BatchEditNodePropertyCommand(
+                    nodes,
+                    "content.coordinates",
+                    new_coords,
+                    old_values,
+                    None # No signal needed as we update visual manually in command
+                )
+                self.scene().undo_stack.push(cmd)
+            else:
+                for node_item in nodes:
+                    coords = node_item.model.content.get("coordinates", {})
+                    coords.update(data)
+                    node_item.model.content["coordinates"] = coords
+                    node_item.update_location_display()
             
             print(f"Location updated for {len(nodes)} nodes: {data['location_name']}")
             return

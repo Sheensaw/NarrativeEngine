@@ -4,7 +4,7 @@ import os
 import json
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QTextEdit, QPushButton, QLabel, 
-                             QFileDialog, QMessageBox, QFrame, QScrollArea, QGraphicsOpacityEffect)
+                             QFileDialog, QMessageBox, QFrame, QScrollArea, QGraphicsOpacityEffect, QDialog)
 from PyQt6.QtGui import QFontDatabase, QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize, QUrl, QTimer, QPropertyAnimation, QEasingCurve
 
@@ -12,8 +12,119 @@ from src.core.models import ProjectModel, ItemModel
 from src.core.serializer import ProjectSerializer
 from src.engine.story_manager import StoryManager
 from src.core.database import DatabaseManager
-from src.ui.sliding_menu import SlidingMenu
-from src.ui.animated_widgets import FadeTextEdit, HoverButton
+from src.ui.game_menu import GameMenu
+from src.ui.animated_widgets import FadeTextEdit
+
+class QuestOfferDialog(QDialog):
+    def __init__(self, parent, quest, project):
+        super().__init__(parent)
+        self.quest = quest
+        self.project = project
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedSize(500, 450)
+        
+        # Main Layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Background Frame
+        self.frame = QFrame()
+        self.frame.setObjectName("QuestDialogFrame")
+        self.frame.setStyleSheet("""
+            QFrame#QuestDialogFrame {
+                background-color: #1a1a1a;
+                border: 2px solid #b1a270;
+                border-radius: 8px;
+            }
+            QLabel { font-family: 'Underdog'; color: #eee; }
+            QTextEdit { background-color: rgba(0,0,0,0.3); border: none; font-size: 16px; padding: 10px; color: #ddd; border-radius: 4px; }
+            QPushButton { background-color: #333; color: #ccc; border: 1px solid #555; padding: 10px 20px; font-size: 14px; border-radius: 4px; font-family: 'Underdog'; }
+            QPushButton:hover { background-color: #444; border-color: #777; color: #fff; }
+            QPushButton#AcceptBtn { background-color: #5d4037; border-color: #8d6e63; color: #ffcc80; }
+            QPushButton#AcceptBtn:hover { background-color: #6d4c41; border-color: #a1887f; }
+            QPushButton#RefuseBtn { background-color: #333; border-color: #555; }
+            QPushButton#RefuseBtn:hover { background-color: #444; border-color: #777; }
+        """)
+        main_layout.addWidget(self.frame)
+        
+        content_layout = QVBoxLayout(self.frame)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Header (Title + icon maybe?)
+        lbl_header = QLabel("OFFRE DE QUÊTE")
+        lbl_header.setStyleSheet("color: #888; font-size: 12px; font-weight: bold; letter-spacing: 2px;")
+        lbl_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(lbl_header)
+        
+        # Title using Quest Title
+        lbl_title = QLabel(quest.title.upper())
+        lbl_title.setStyleSheet("font-size: 26px; font-weight: bold; color: #b1a270; margin-bottom: 5px;")
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_title.setWordWrap(True)
+        content_layout.addWidget(lbl_title)
+        
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setStyleSheet("color: #444;")
+        content_layout.addWidget(line)
+
+        # Presentation Text
+        txt_desc = QTextEdit()
+        txt_desc.setReadOnly(True)
+        txt_desc.setPlainText(quest.presentation_text if quest.presentation_text else quest.description)
+        content_layout.addWidget(txt_desc)
+        
+        # Loot Preview
+        if quest.loot and (quest.loot.get("xp") or quest.loot.get("gold") or quest.loot.get("items")):
+            lbl_loot = QLabel("Récompenses :")
+            lbl_loot.setStyleSheet("font-weight: bold; margin-top: 10px; color: #bbb;")
+            content_layout.addWidget(lbl_loot)
+            
+            loot_text = []
+            if quest.loot.get("xp"): loot_text.append(f"+{quest.loot['xp']} XP")
+            if quest.loot.get("gold"): loot_text.append(f"+{quest.loot['gold']} Or")
+            
+            for item_id, qty in quest.loot.get("items", {}).items():
+                item_name = item_id
+                if self.project and item_id in self.project.items:
+                    item_name = self.project.items[item_id].name
+                loot_text.append(f"{qty}x {item_name}")
+                
+            lbl_loot_val = QLabel(" • ".join(loot_text))
+            lbl_loot_val.setStyleSheet("color: #ffcc80; font-style: italic; margin-bottom: 20px; font-size: 14px;")
+            lbl_loot_val.setWordWrap(True)
+            content_layout.addWidget(lbl_loot_val)
+        else:
+             content_layout.addStretch()
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_refuse = QPushButton("Refuser")
+        btn_refuse.setObjectName("RefuseBtn")
+        btn_refuse.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_refuse.clicked.connect(self.reject)
+        
+        btn_accept = QPushButton("Accepter")
+        btn_accept.setObjectName("AcceptBtn")
+        btn_accept.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_accept.clicked.connect(self.accept)
+        
+        btn_layout.addWidget(btn_refuse)
+        btn_layout.addWidget(btn_accept)
+        content_layout.addLayout(btn_layout)
+
+    # Enable moving the window by dragging
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self.drag_pos)
+            event.accept()
 
 class PlayerWindow(QMainWindow):
     def __init__(self, project_file=None):
@@ -37,8 +148,9 @@ class PlayerWindow(QMainWindow):
         self._init_ui()
         
         # 4. Sliding Menu (Overlay)
-        self.sliding_menu = SlidingMenu(self, self.story_manager)
-        self.sliding_menu.hide()
+        # 4. Game Menu (Central Overlay)
+        self.game_menu = GameMenu(self, self.story_manager)
+        self.game_menu.hide()
 
         # 5. Load Project if provided
         if project_file:
@@ -49,10 +161,31 @@ class PlayerWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Keep menu on the right side, full height
-        if hasattr(self, 'sliding_menu'):
-            menu_width = 400
-            self.sliding_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
+        # Keep menu full size (transparent overlay)
+        if hasattr(self, 'game_menu'):
+            self.game_menu.resize(self.width(), self.height())
+        
+        
+        # Enforce 4:3 Content Area
+        if hasattr(self, 'main_area') and hasattr(self, 'content_layout'):
+            # Calculate target dimensions
+            w = self.main_area.width()
+            h = self.main_area.height()
+            
+            # Target Ratio 4:3
+            target_ratio = 4.0 / 3.0
+            
+            # If wider than 4:3, constrain width
+            if h > 0:
+                current_ratio = w / h
+                if current_ratio > target_ratio:
+                    target_width = h * target_ratio
+                    margin = int((w - target_width) / 2)
+                    self.content_layout.setContentsMargins(margin, 50, margin, 50)
+                else:
+                    # If taller than 4:3 (portrait), we typically don't constrain height for text flow,
+                    # but we keep reasonable side margins.
+                    self.content_layout.setContentsMargins(50, 50, 50, 50)
 
     def keyPressEvent(self, event):
         """Gère les raccourcis clavier."""
@@ -79,7 +212,8 @@ class PlayerWindow(QMainWindow):
             QPushButton:hover { background-color: #3a3a3a; border-color: #666; }
             QPushButton:pressed { background-color: #222; }
             QPushButton.choice-btn { text-align: left; font-size: 18px; margin: 5px 0; padding: 15px; border-left: 3px solid #555; }
-            QPushButton.choice-btn:hover { border-left-color: #c42b1c; background-color: #1e1e1e; padding-left: 25px; }
+            QPushButton.choice-btn:enabled:hover { border-left-color: #c42b1c; background-color: #1e1e1e; padding-left: 25px; }
+            QPushButton:disabled { color: #555; border-color: #333; background-color: #1a1a1a; border-left-color: #333; padding-left: 15px; }
             QLabel { color: #ffffff; font-family: 'Underdog'; font-size: 16px; }
         """)
 
@@ -197,7 +331,10 @@ class PlayerWindow(QMainWindow):
         btn_equip = create_hud_btn("Équipement", "equipment.png", lambda: self.toggle_menu(1))
         top_layout.addWidget(btn_equip)
 
-        btn_comp = create_hud_btn("Compagnons", "buddy.png", lambda: self.toggle_menu(2))
+        btn_quests = create_hud_btn("Quêtes", "quest.png", lambda: self.toggle_menu(2))
+        top_layout.addWidget(btn_quests)
+
+        btn_comp = create_hud_btn("Compagnons", "buddy.png", lambda: self.toggle_menu(3))
         top_layout.addWidget(btn_comp)
 
         main_layout.addWidget(self.top_bar)
@@ -234,17 +371,17 @@ class PlayerWindow(QMainWindow):
         self.main_area.setObjectName("MainArea")
         main_layout.addWidget(self.main_area)
 
-        content_layout = QVBoxLayout(self.main_area)
-        content_layout.setContentsMargins(150, 50, 150, 50) # Centered reading experience
-        content_layout.setSpacing(30)
-
+        self.content_layout = QVBoxLayout(self.main_area)
+        self.content_layout.setContentsMargins(150, 50, 150, 50) # Initial margins, updated by resizeEvent
+        self.content_layout.setSpacing(30)
+ 
         # Story Text
         self.txt_story = FadeTextEdit()
         self.txt_story.setObjectName("StoryText")
         self.txt_story.setReadOnly(True)
         self.txt_story.setFrameShape(QFrame.Shape.NoFrame)
         self.txt_story.finished.connect(self.show_choices_sequentially)
-        content_layout.addWidget(self.txt_story, 4)
+        self.content_layout.addWidget(self.txt_story, 1) # Text takes all remaining space
 
         # Choices
         self.scroll_choices = QScrollArea()
@@ -259,7 +396,8 @@ class PlayerWindow(QMainWindow):
         self.layout_choices.setSpacing(10)
         
         self.scroll_choices.setWidget(self.choices_container)
-        content_layout.addWidget(self.scroll_choices, 2)
+        self.scroll_choices.setWidget(self.choices_container)
+        self.content_layout.addWidget(self.scroll_choices, 0) # Stretch 0 to let it adapt to content size, handled in refreshes
 
     def on_variable_changed(self, name, value):
         """Met à jour l'interface quand une variable change."""
@@ -272,20 +410,26 @@ class PlayerWindow(QMainWindow):
             pass
         elif name == "location_text" or name.startswith("location_"):
             self.update_location_label()
-        
+        elif name == "active_quest_offer":
+            if value:
+                self.show_quest_offer(value)
+        elif name == "active_quests" or name == "completed_quests":
+            # State of quests changed, choices might need update (e.g. "Rendre la quête")
+            self.refresh_choices_only()
+
         # Refresh menu if open
-        if hasattr(self, 'sliding_menu') and self.sliding_menu.isVisible():
-            self.sliding_menu.refresh_current_view()
+        if hasattr(self, 'game_menu') and self.game_menu.isVisible():
+            self.game_menu.refresh_current_view()
 
     def toggle_menu(self, tab_index):
-        if self.sliding_menu.isVisible():
+        if self.game_menu.isVisible():
             # If already visible and same tab, hide. If different tab, switch.
-            if self.sliding_menu.stack.currentIndex() == tab_index:
-                self.sliding_menu.hide_menu()
+            if self.game_menu.stack.currentIndex() == tab_index:
+                self.game_menu.hide_menu()
             else:
-                self.sliding_menu.switch_tab(tab_index)
+                self.game_menu.switch_tab(tab_index)
         else:
-            self.sliding_menu.show_menu(tab_index)
+            self.game_menu.show_menu(tab_index)
 
     def open_project_dialog(self):
         path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un projet", "", "JSON Files (*.json)")
@@ -334,7 +478,7 @@ class PlayerWindow(QMainWindow):
              self.layout_choices.addWidget(lbl)
         
         for i, choice in enumerate(choices):
-            btn = HoverButton(choice["text"])
+            btn = QPushButton(choice["text"])
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("class", "choice-btn")
             btn.clicked.connect(lambda checked, idx=i: self.make_choice(idx))
@@ -343,15 +487,20 @@ class PlayerWindow(QMainWindow):
             opacity = QGraphicsOpacityEffect(btn)
             opacity.setOpacity(0.0)
             btn.setGraphicsEffect(opacity)
-            btn.setVisible(False) # Also hide to prevent clicks? No, opacity 0 is enough visually, but setVisible False is safer.
-            # Actually, if we setVisible(False), layout might collapse. 
-            # Better to use Opacity 0 and maybe disable?
-            # Let's use Opacity 0 and setEnabled(False)
-            btn.setEnabled(False)
+            btn.setVisible(False)
+            
+            # Store logic disabled state for sequential reveal
+            btn.setProperty("logic_disabled", choice.get("disabled", False))
             
             self.layout_choices.addWidget(btn)
 
         self.layout_choices.addStretch()
+        
+        # Dynamic resizing of choices area
+        count = len(choices) if choices else 1
+        needed_height = count * 65 + 40
+        final_height = min(needed_height, 350)
+        self.scroll_choices.setFixedHeight(final_height)
 
     def show_choices_sequentially(self):
         """Reveals choices one by one with fade in."""
@@ -376,7 +525,15 @@ class PlayerWindow(QMainWindow):
     def _reveal_next_choice(self):
         if self.current_choice_index < len(self.choice_buttons):
             btn = self.choice_buttons[self.current_choice_index]
-            btn.setEnabled(True)
+            
+            # Apply Logic Disabled state
+            is_disabled = btn.property("logic_disabled")
+            btn.setEnabled(not is_disabled)
+            if is_disabled:
+                # Apply disabled visual style explicitly if needed, though properties might handle it
+                # But QSS :disabled should work.
+                pass
+
             btn.setVisible(True) # If we hid it
             
             # Fade In
@@ -417,15 +574,25 @@ class PlayerWindow(QMainWindow):
              self.layout_choices.addWidget(lbl)
         
         for i, choice in enumerate(choices):
-            btn = HoverButton(choice["text"])
+            btn = QPushButton(choice["text"])
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty("class", "choice-btn")
             btn.clicked.connect(lambda checked, idx=i: self.make_choice(idx))
+            
+            # Apply Disabled State
+            if choice.get("disabled"):
+                btn.setEnabled(False)
             
             # Show immediately (no fade) for instant feedback
             self.layout_choices.addWidget(btn)
 
         self.layout_choices.addStretch()
+
+        # Dynamic resizing of choices area
+        count = len(choices) if choices else 1
+        needed_height = count * 65 + 40
+        final_height = min(needed_height, 350)
+        self.scroll_choices.setFixedHeight(final_height)
 
     def update_hud(self):
         vars = self.story_manager.variables.get_all()
@@ -450,6 +617,21 @@ class PlayerWindow(QMainWindow):
             self.lbl_location.setText(html)
         else:
             self.lbl_location.setText(full_text)
+
+    def show_quest_offer(self, quest_id):
+        """Affiche la fenêtre de proposition de quête."""
+        if not self.story_manager.project: return
+        
+        quest = self.story_manager.project.quests.get(quest_id)
+        if not quest: return
+        
+        dialog = QuestOfferDialog(self, quest, self.story_manager.project)
+        if dialog.exec():
+            # Accepted
+            self.story_manager.variables.start_quest(quest_id)
+        
+        # Always clear the offer variable after closing dialog
+        self.story_manager.variables.hide_quest_offer()
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 import sys
 import uuid
+import copy
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QLineEdit, QTextEdit, QComboBox, QPushButton, 
@@ -9,7 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve, QAbstractAnimation, QSize
 from PyQt6.QtGui import QUndoStack, QAction, QIcon
 
-from src.core.commands import ReorderChoicesCommand, EditChoiceCommand
+from src.core.commands import ReorderChoicesCommand, EditChoiceCommand, EditNodePropertyCommand, EditNodeDictKeyCommand
 
 from src.editor.graph.node_item import NodeItem
 from src.core.definitions import MACRO_DEFINITIONS
@@ -19,7 +20,27 @@ class CollapsibleBox(QWidget):
     def __init__(self, title="", parent=None):
         super().__init__(parent)
         self.toggle_button = QToolButton(text=title, checkable=True, checked=False)
-        self.toggle_button.setStyleSheet("QToolButton { border: none; background-color: #444; color: #eee; padding: 5px; text-align: left; font-weight: bold; } QToolButton:hover { background-color: #555; }")
+        self.toggle_button.setStyleSheet("""
+            QToolButton { 
+                border: 1px solid #3d3d3d; 
+                background-color: #2d2d2d; 
+                color: #eee; 
+                padding: 8px; 
+                text-align: left; 
+                font-weight: bold; 
+                font-size: 13px;
+                border-radius: 4px;
+            } 
+            QToolButton:hover { 
+                background-color: #3d3d3d; 
+                border-color: #4d4d4d;
+            }
+            QToolButton:checked { 
+                background-color: #404040; 
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+        """)
         self.toggle_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.toggle_button.setArrowType(Qt.ArrowType.RightArrow)
         self.toggle_button.clicked.connect(self.on_pressed)
@@ -28,6 +49,16 @@ class CollapsibleBox(QWidget):
         self.content_area.setMaximumHeight(0)
         self.content_area.setMinimumHeight(0)
         self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # Add a subtle border/background to content area to match header
+        self.content_area.setStyleSheet("""
+            QWidget {
+                background-color: #262626;
+                border: 1px solid #3d3d3d;
+                border-top: none;
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }
+        """)
 
         lay = QVBoxLayout(self)
         lay.setSpacing(0)
@@ -36,8 +67,11 @@ class CollapsibleBox(QWidget):
         lay.addWidget(self.content_area)
 
         self.animation = QPropertyAnimation(self.content_area, b"maximumHeight")
-        self.animation.setDuration(300)
-        self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.animation.setDuration(250)
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        
+    def get_animation(self):
+        return self.animation
 
     def on_pressed(self):
         checked = self.toggle_button.isChecked()
@@ -245,11 +279,21 @@ class EventEditorWidget(QWidget):
     """Widget pour éditer une liste d'événements (macros) avec une UI ergonomique."""
     
     data_changed = pyqtSignal()
+    structure_changed = pyqtSignal()
 
-    def __init__(self, title="Événements"):
+    def __init__(self, title="Événements", undo_stack=None):
         super().__init__()
         self.events = []
         self.project = None
+        self.undo_stack = undo_stack
+        self.node_model = None
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Signal for structural changes (Add/Remove)
+        self.structure_changed.connect(self._reload_from_model)
+        self.structure_changed.connect(self.data_changed.emit)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -286,10 +330,17 @@ class EventEditorWidget(QWidget):
         
         layout.addLayout(add_layout)
 
-    def set_events(self, events, project=None):
+    def set_events(self, events, project=None, node_model=None):
         self.events = events if events else []
         self.project = project
+        self.node_model = node_model
         self.refresh_list()
+        
+    def _reload_from_model(self):
+        if self.node_model:
+            # Assuming "logic" dict and "on_enter" key based on usage in Inspector
+            self.events = self.node_model.logic.get("on_enter", [])
+            self.refresh_list()
 
     def refresh_list(self):
         # Clear existing items
@@ -311,19 +362,38 @@ class EventEditorWidget(QWidget):
     def add_event(self):
         macro_key = self.combo_type.currentData()
         new_event = {"type": macro_key, "parameters": {}}
-        self.events.append(new_event)
-        self._create_event_widget(new_event)
-        self.data_changed.emit()
+        
+        if self.undo_stack is not None and self.node_model:
+            new_list = self.events + [new_event]
+            cmd = EditNodeDictKeyCommand(self.node_model, "logic", "on_enter", new_list, self.events, self.structure_changed)
+            self.undo_stack.push(cmd)
+            self.events = new_list
+            self.refresh_list()
+            self.structure_changed.emit()
+        else:
+            self.events.append(new_event)
+            self._create_event_widget(new_event)
+            self.structure_changed.emit()
 
     def remove_event(self, item_widget):
         if item_widget.event_data in self.events:
-            self.events.remove(item_widget.event_data)
-        self.data_changed.emit()
+            if self.undo_stack is not None and self.node_model:
+                new_list = self.events.copy()
+                new_list.remove(item_widget.event_data)
+                cmd = EditNodeDictKeyCommand(self.node_model, "logic", "on_enter", new_list, self.events, self.structure_changed)
+                self.undo_stack.push(cmd)
+                self.events = new_list
+                self.refresh_list()
+                self.structure_changed.emit()
+            else:
+                self.events.remove(item_widget.event_data)
+                self.structure_changed.emit()
 
 
 class ChoiceItemWidget(QFrame):
     removed = pyqtSignal()
     changed = pyqtSignal()
+    toggled = pyqtSignal(bool)
     copy_requested = pyqtSignal(dict)
     paste_requested = pyqtSignal()
 
@@ -355,6 +425,7 @@ class ChoiceItemWidget(QFrame):
 
         # Body (Collapsible)
         self.collapsible = CollapsibleBox("Détails")
+        self.collapsible.toggle_button.toggled.connect(self.toggled.emit)
         body_layout = QVBoxLayout()
         
         # Target
@@ -365,7 +436,8 @@ class ChoiceItemWidget(QFrame):
         self.combo_target.addItem("", "")
         if self.project:
             for node in self.project.nodes.values():
-                self.combo_target.addItem(f"{node.title} ({node.id})", node.id)
+                display_text = node.title if node.title else f"Node {node.id[:8]}"
+                self.combo_target.addItem(display_text, node.id)
         
         current_target = choice_data.get("target_node_id", "")
         idx = self.combo_target.findData(current_target)
@@ -432,7 +504,8 @@ class ChoiceItemWidget(QFrame):
         self.combo_rep_target.addItem("", "")
         if self.project:
             for node in self.project.nodes.values():
-                self.combo_rep_target.addItem(f"{node.title} ({node.id})", node.id)
+                display_text = node.title if node.title else f"Node {node.id[:8]}"
+                self.combo_rep_target.addItem(display_text, node.id)
         idx_rep = self.combo_rep_target.findData(rep_data.get("target_node_id", ""))
         if idx_rep >= 0:
             self.combo_rep_target.setCurrentIndex(idx_rep)
@@ -560,6 +633,7 @@ class ChoiceEditorWidget(QWidget):
     """Widget pour éditer les choix avec Drag & Drop et Context Menu."""
     
     data_changed = pyqtSignal()
+    structure_changed = pyqtSignal()
     
     def __init__(self, title="Choix", undo_stack=None):
         super().__init__()
@@ -588,6 +662,21 @@ class ChoiceEditorWidget(QWidget):
         self.btn_add.setStyleSheet("background-color: #5cb85c; padding: 5px;")
         self.btn_add.clicked.connect(self.add_choice)
         layout.addWidget(self.btn_add)
+        
+        # Signal for structural changes (Add/Remove/Reorder) that require UI reload
+        self.structure_changed.connect(self._reload_from_model)
+        # Propagate structural changes to data_changed for scene updates
+        self.structure_changed.connect(self.data_changed.emit)
+
+        # Connect self signal to reload (for Undo/Redo)
+        # FIX: We now use structure_changed for this, keeping data_changed for text edits only.
+        # self.data_changed.connect(self._reload_from_model)
+
+    def _reload_from_model(self):
+        if self.node_model:
+            # Reload choices from model to ensure UI is in sync (esp. after Undo)
+            self.choices = self.node_model.content.get("choices", [])
+            self.refresh_list()
 
     def set_choices(self, choices, project=None, node_model=None):
         self.choices = choices if choices else []
@@ -607,6 +696,12 @@ class ChoiceEditorWidget(QWidget):
         widget = ChoiceItemWidget(choice_data, self.project)
         widget.removed.connect(lambda: self.remove_choice(choice_data)) # Pass data, not widget
         widget.changed.connect(self.data_changed.emit)
+        widget.toggled.connect(lambda c: self.on_item_toggled(item, widget, c))
+        
+        # Connect animation valueChanged to real-time resize
+        anim = widget.collapsible.get_animation()
+        anim.valueChanged.connect(lambda val: self._update_item_size(item, widget))
+        
         widget.copy_requested.connect(self.copy_choice)
         widget.paste_requested.connect(self.paste_choices)
         
@@ -628,15 +723,16 @@ class ChoiceEditorWidget(QWidget):
         if new_choices == self.choices:
             return
 
-        if self.undo_stack and self.node_model:
-            cmd = ReorderChoicesCommand(self.node_model, new_choices, self.choices, self.data_changed)
+        if self.undo_stack is not None and self.node_model:
+            # Use structure_changed signal so Undo/Redo reloads the list
+            cmd = ReorderChoicesCommand(self.node_model, new_choices, self.choices, self.structure_changed)
             self.undo_stack.push(cmd)
             self.choices = new_choices
-            # No need to refresh list, it's already visually correct
-            self.data_changed.emit()
+            # No need to refresh list manually right now, but signal will handle future sync
+            self.structure_changed.emit()
         else:
             self.choices = new_choices
-            self.data_changed.emit()
+            self.structure_changed.emit()
 
     def add_choice(self):
         new_choice = {
@@ -649,32 +745,32 @@ class ChoiceEditorWidget(QWidget):
             "events": []
         }
         
-        if self.undo_stack and self.node_model:
+        if self.undo_stack is not None and self.node_model:
             new_list = self.choices + [new_choice]
-            cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.data_changed)
+            cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.structure_changed)
             self.undo_stack.push(cmd)
             self.choices = new_list
             self.refresh_list()
-            self.data_changed.emit()
+            self.structure_changed.emit()
         else:
             self.choices.append(new_choice)
             self.refresh_list()
-            self.data_changed.emit()
+            self.structure_changed.emit()
 
     def remove_choice(self, choice_data):
         if choice_data in self.choices:
-            if self.undo_stack and self.node_model:
+            if self.undo_stack is not None and self.node_model:
                 new_list = self.choices.copy()
                 new_list.remove(choice_data)
-                cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.data_changed)
+                cmd = EditChoiceCommand(self.node_model, new_list, self.choices, self.structure_changed)
                 self.undo_stack.push(cmd)
                 self.choices = new_list
                 self.refresh_list()
-                self.data_changed.emit()
+                self.structure_changed.emit()
             else:
                 self.choices.remove(choice_data)
                 self.refresh_list()
-                self.data_changed.emit()
+                self.structure_changed.emit()
 
     def copy_choice(self, choice_data):
         import json
@@ -694,19 +790,37 @@ class ChoiceEditorWidget(QWidget):
                 for c in new_choices:
                     c["id"] = str(uuid.uuid4())
                 
-                if self.undo_stack and self.node_model:
+                if self.undo_stack is not None and self.node_model:
                     final_list = self.choices + new_choices
-                    cmd = EditChoiceCommand(self.node_model, final_list, self.choices, self.data_changed)
+                    cmd = EditChoiceCommand(self.node_model, final_list, self.choices, self.structure_changed)
                     self.undo_stack.push(cmd)
                     self.choices = final_list
                     self.refresh_list()
-                    self.data_changed.emit()
+                    self.structure_changed.emit()
                 else:
                     self.choices.extend(new_choices)
                     self.refresh_list()
-                    self.data_changed.emit()
+                    self.structure_changed.emit()
         except Exception as e:
             print(f"Paste error: {e}")
+
+    def on_item_toggled(self, item, widget, checked):
+        # We rely on the animation valueChanged signal to update the layout in real-time.
+        # However, we also need to ensure the final state is correct.
+        
+        # If expanding, we might need to set the size hint to a large value initially?
+        # No, if we update real-time, it should grow.
+        
+        # But we need to make sure the CollapsibleBox target height is correct.
+        # CollapsibleBox.on_pressed handles the animation start.
+        
+        # We just need to trigger an initial layout update to start the process?
+        # Or maybe just let the animation drive it.
+        pass
+
+    def _update_item_size(self, item, widget):
+        item.setSizeHint(widget.sizeHint())
+        self.list_widget.doItemsLayout()
 
 
 class TextVariantItemWidget(QFrame):
@@ -756,17 +870,19 @@ class TextVariantItemWidget(QFrame):
 
 
 class TextVariantEditorWidget(QWidget):
-    """Widget pour éditer les variantes de texte."""
+    """Widget pour gérer les variantes de texte."""
     data_changed = pyqtSignal()
-
-    def __init__(self):
+    structure_changed = pyqtSignal()
+    
+    def __init__(self, undo_stack=None):
         super().__init__()
         self.variants = []
+        self.undo_stack = undo_stack
+        self.node_model = None
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # Scroll Area
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
@@ -786,10 +902,19 @@ class TextVariantEditorWidget(QWidget):
         self.btn_add.setStyleSheet("background-color: #5cb85c; padding: 5px;")
         self.btn_add.clicked.connect(self.add_variant)
         layout.addWidget(self.btn_add)
+        
+        self.structure_changed.connect(self._reload_from_model)
+        self.structure_changed.connect(self.data_changed.emit)
 
-    def set_variants(self, variants):
+    def set_variants(self, variants, node_model=None):
         self.variants = variants if variants else []
+        self.node_model = node_model
         self.refresh_list()
+        
+    def _reload_from_model(self):
+        if self.node_model:
+            self.variants = copy.deepcopy(self.node_model.content.get("text_variants", []))
+            self.refresh_list()
 
     def refresh_list(self):
         while self.container_layout.count():
@@ -812,14 +937,32 @@ class TextVariantEditorWidget(QWidget):
             "condition": "$visits > 0",
             "text": "Nouveau texte..."
         }
-        self.variants.append(new_variant)
-        self._create_variant_widget(new_variant)
-        self.data_changed.emit()
+        
+        if self.undo_stack is not None and self.node_model:
+            new_list = self.variants + [new_variant]
+            cmd = EditNodeDictKeyCommand(self.node_model, "content", "text_variants", new_list, self.variants, self.structure_changed)
+            self.undo_stack.push(cmd)
+            self.variants = new_list
+            self.refresh_list()
+            self.structure_changed.emit()
+        else:
+            self.variants.append(new_variant)
+            self._create_variant_widget(new_variant)
+            self.structure_changed.emit()
 
     def remove_variant(self, item_widget):
         if item_widget.variant_data in self.variants:
-            self.variants.remove(item_widget.variant_data)
-        self.data_changed.emit()
+            if self.undo_stack is not None and self.node_model:
+                new_list = self.variants.copy()
+                new_list.remove(item_widget.variant_data)
+                cmd = EditNodeDictKeyCommand(self.node_model, "content", "text_variants", new_list, self.variants, self.structure_changed)
+                self.undo_stack.push(cmd)
+                self.variants = new_list
+                self.refresh_list()
+                self.structure_changed.emit()
+            else:
+                self.variants.remove(item_widget.variant_data)
+                self.structure_changed.emit()
 
 
 class InspectorPanel(QWidget):
@@ -908,7 +1051,8 @@ class InspectorPanel(QWidget):
         
         self.form_general = QFormLayout()
         self.txt_title = QLineEdit()
-        self.txt_title.textChanged.connect(self.on_title_changed)
+        self.txt_title.setPlaceholderText("Titre du nœud...")
+        self.txt_title.editingFinished.connect(self.on_title_changed)
         self.form_general.addRow("Titre :", self.txt_title)
         
         self.layout_general.addLayout(self.form_general)
@@ -919,7 +1063,7 @@ class InspectorPanel(QWidget):
         self.layout_logic = QVBoxLayout(self.tab_logic)
         self.layout_logic.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        self.editor_on_enter = EventEditorWidget("On Enter")
+        self.editor_on_enter = EventEditorWidget("On Enter", undo_stack=self.undo_stack)
         self.editor_on_enter.data_changed.connect(self.on_logic_changed)
         self.layout_logic.addWidget(QLabel("<b>À l'entrée de la scène :</b>"))
         self.layout_logic.addWidget(self.editor_on_enter)
@@ -945,13 +1089,14 @@ class InspectorPanel(QWidget):
         # Default Text (Read-Only View)
         self.layout_text.addWidget(QLabel("<b>Texte par défaut (éditable dans le graphe) :</b>"))
         self.txt_default_preview = QTextEdit()
+        self.txt_default_preview.setPlaceholderText("Texte par défaut (éditable dans le graphe)...")
         self.txt_default_preview.setReadOnly(True)
         self.txt_default_preview.setMaximumHeight(80)
         self.txt_default_preview.setStyleSheet("color: #aaa; font-style: italic;")
         self.layout_text.addWidget(self.txt_default_preview)
         
         self.layout_text.addWidget(QLabel("<b>Variantes Conditionnelles :</b>"))
-        self.editor_variants = TextVariantEditorWidget()
+        self.editor_variants = TextVariantEditorWidget(undo_stack=self.undo_stack)
         self.editor_variants.data_changed.connect(self.on_variants_changed)
         self.layout_text.addWidget(self.editor_variants)
         
@@ -994,28 +1139,73 @@ class InspectorPanel(QWidget):
         self.txt_title.setText(node_model.title)
         
         # Logic
-        self.editor_on_enter.set_events(node_model.logic.get("on_enter", []), project=self.project)
+        self.editor_on_enter.set_events(node_model.logic.get("on_enter", []), project=self.project, node_model=node_model)
         
         # Choices
         self.editor_choices.set_choices(node_model.content.get("choices", []), project=self.project, node_model=node_model)
         
         # Text
         self.txt_default_preview.setPlainText(node_model.content.get("text", ""))
-        self.editor_variants.set_variants(node_model.content.get("text_variants", []))
+        self.editor_variants.set_variants(copy.deepcopy(node_model.content.get("text_variants", [])), node_model=node_model)
         
         self._is_loading = False
 
-    def on_title_changed(self, text):
+    def on_title_changed(self):
         if self.current_node_item and not self._is_loading:
-            self.current_node_item.model.title = text
+            new_title = self.txt_title.text().strip()
+            old_title = self.current_node_item.model.title
+            
+            if new_title == old_title:
+                return
+            
+            # Check Uniqueness
+            if self.project:
+                for node in self.project.nodes.values():
+                    if node.id != self.current_node_item.model.id and node.title == new_title:
+                        # Duplicate found
+                        # Revert to old title
+                        self.txt_title.setText(old_title)
+                        # Optional: Could show a tooltip or flash red, but revert is safest simple logic
+                        print(f"[Inspector] Duplicate scene name '{new_title}' rejected.")
+                        return
+
+            if self.undo_stack is not None:
+                cmd = EditNodePropertyCommand(
+                    self.current_node_item.model, 
+                    "title", 
+                    new_title, 
+                    old_title, 
+                    self.data_changed
+                )
+                self.undo_stack.push(cmd)
+            else:
+                self.current_node_item.model.title = new_title
+                self.data_changed.emit()
+            
             self.current_node_item.update_preview()
-            self.lbl_header.setText(f"Nœud : {text}")
-            self.data_changed.emit()
+            self.lbl_header.setText(f"Nœud : {new_title}")
 
     def on_logic_changed(self):
         if self.current_node_item and not self._is_loading:
-            self.current_node_item.model.logic["on_enter"] = self.editor_on_enter.events
-            self.data_changed.emit()
+            new_logic = self.current_node_item.model.logic.copy()
+            new_logic["on_enter"] = self.editor_on_enter.events
+            old_logic = self.current_node_item.model.logic
+            
+            if new_logic == old_logic:
+                return
+
+            if self.undo_stack is not None:
+                cmd = EditNodePropertyCommand(
+                    self.current_node_item.model,
+                    "logic",
+                    new_logic,
+                    old_logic,
+                    self.data_changed
+                )
+                self.undo_stack.push(cmd)
+            else:
+                self.current_node_item.model.logic = new_logic
+                self.data_changed.emit()
 
     def on_choices_changed(self):
         if self.current_node_item and not self._is_loading:
@@ -1025,5 +1215,22 @@ class InspectorPanel(QWidget):
 
     def on_variants_changed(self):
         if self.current_node_item and not self._is_loading:
-            self.current_node_item.model.content["text_variants"] = self.editor_variants.variants
-            self.data_changed.emit()
+            new_content = self.current_node_item.model.content.copy()
+            new_content["text_variants"] = self.editor_variants.variants
+            old_content = self.current_node_item.model.content
+            
+            if new_content == old_content:
+                return
+
+            if self.undo_stack is not None:
+                cmd = EditNodePropertyCommand(
+                    self.current_node_item.model,
+                    "content",
+                    new_content,
+                    old_content,
+                    self.data_changed
+                )
+                self.undo_stack.push(cmd)
+            else:
+                self.current_node_item.model.content = new_content
+                self.data_changed.emit()

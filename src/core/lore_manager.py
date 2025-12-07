@@ -5,10 +5,30 @@ import math
 print(f"DEBUG: Loading LoreManager from {__file__}")
 
 class LoreManager:
-    def __init__(self, lore_directory):
+    def __init__(self, lore_directory=None):
         self.lore_directory = lore_directory
         self.locations = []
-        self.load_lore()
+        if lore_directory:
+            self.load_lore()
+
+    def set_project(self, project):
+        """Charge les données de lore depuis le projet."""
+        self.locations = []
+        if not project: return
+        
+        for loc in project.locations.values():
+            self.locations.append({
+                "id": loc.id,
+                "name": loc.place,
+                "x": loc.coords.get("x", 0.0),
+                "y": loc.coords.get("y", 0.0),
+                "continent": loc.continent,
+                "city": loc.city,
+                "place": loc.place,
+                "type": loc.type,
+                "scale": "micro", # Default to micro for project locations
+                "main_location_name": ""
+            })
 
     def load_lore(self):
         self.locations = []

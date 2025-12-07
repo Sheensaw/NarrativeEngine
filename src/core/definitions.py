@@ -123,11 +123,16 @@ MACRO_DEFINITIONS = {
             {"name": "qty", "type": "int", "label": "Quantity", "default": 1},
         ]
     },
+    "showQuest": {
+        "label": "Show Quest Offer",
+        "args": [
+            {"name": "quest_id", "type": "quest_select", "label": "Quest"},
+        ]
+    },
     "startQuest": {
         "label": "Start Quest",
         "args": [
             {"name": "quest_id", "type": "quest_select", "label": "Quest"},
-            {"name": "loot", "type": "string", "label": "Loot (Optional)"},
         ]
     },
     "completeQuest": {
@@ -136,13 +141,10 @@ MACRO_DEFINITIONS = {
             {"name": "quest_id", "type": "quest_select", "label": "Quest"},
         ]
     },
-    "spawn": {
-        "label": "Spawn NPC",
+    "returnQuest": {
+        "label": "Return Quest (Finish & Loot)",
         "args": [
-            {"name": "id", "type": "string", "label": "NPC ID"},
-            {"name": "target", "type": "node_select", "label": "Passage/Location"},
-            {"name": "x", "type": "int", "label": "X Coord (Optional)", "default": 0},
-            {"name": "y", "type": "int", "label": "Y Coord (Optional)", "default": 0},
+            {"name": "quest_id", "type": "quest_select", "label": "Quest"},
         ]
     },
     "movePnj": {

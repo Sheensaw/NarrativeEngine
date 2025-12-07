@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock_inspector)
 
         # --- Database (Gauche - Drawer) ---
-        self.database_panel = DatabasePanel()
+        self.database_panel = DatabasePanel(undo_stack=self.undo_stack)
         self.dock_database = QDockWidget("Base de Données", self)
         self.dock_database.setWidget(self.database_panel)
         self.dock_database.setAllowedAreas(

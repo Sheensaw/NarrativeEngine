@@ -1,8 +1,65 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QListWidget, QFrame, QScrollArea, QStackedWidget, QListWidgetItem, QGraphicsDropShadowEffect, QMenu)
+                             QListWidget, QFrame, QScrollArea, QStackedWidget, QListWidgetItem, QGraphicsDropShadowEffect, QMenu, QSizePolicy)
 from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QPoint
+
+class QuestItemWidget(QFrame):
+    def __init__(self, quest_model, status="active", current_step_text=None):
+        super().__init__()
+        # Determine colors based on status
+        border_color = "#b1a270" if status == "active" else "#5cb85c"
+        status_text = "EN COURS" if status == "active" else "COMPLÉTÉE"
+        status_bg = "#3d3510" if status == "active" else "#1e3a1e"
+        status_fg = "#ffe066" if status == "active" else "#aaffaa"
+
+        self.setStyleSheet(f"""
+            QuestItemWidget {{
+                background-color: #1a1a1a;
+                border: 1px solid {border_color};
+                border-radius: 6px;
+            }}
+            QLabel {{ border: none; background: transparent; }}
+        """)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+        
+        # Header: Title + Status Badge
+        header = QHBoxLayout()
+        header.setSpacing(10)
+        
+        lbl_title = QLabel(quest_model.title)
+        lbl_title.setStyleSheet("font-weight: bold; font-size: 14px; color: #eee; font-family: 'Underdog';")
+        lbl_title.setWordWrap(True)
+        header.addWidget(lbl_title, 1)
+        
+        lbl_status = QLabel(status_text)
+        lbl_status.setStyleSheet(f"background-color: {status_bg}; color: {status_fg}; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;")
+        lbl_status.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        header.addWidget(lbl_status)
+        
+        layout.addLayout(header)
+        
+        # Description
+        lbl_desc = QLabel(quest_model.description)
+        lbl_desc.setWordWrap(True)
+        lbl_desc.setStyleSheet("color: #aaa; font-style: italic; font-size: 12px;")
+        layout.addWidget(lbl_desc)
+        
+        # Current Objective (Step)
+        if current_step_text:
+            lbl_step = QLabel(f"Objectif : {current_step_text}")
+            lbl_step.setWordWrap(True)
+            lbl_step.setStyleSheet("color: #ffe066; font-weight: bold; font-size: 13px; margin-top: 5px; border-left: 2px solid #b1a270; padding-left: 5px;")
+            layout.addWidget(lbl_step)
+        
+        # Completion Status
+        if status == "completed":
+            lbl_return = QLabel("Prête à être rendue.")
+            lbl_return.setStyleSheet("color: #5cb85c; font-weight: bold; font-size: 12px; margin-top: 5px;")
+            layout.addWidget(lbl_return)
 
 class InventoryItemWidget(QFrame):
     def __init__(self, item_def, qty, assets_dir, is_equipped=False):
@@ -129,13 +186,21 @@ class InventoryItemWidget(QFrame):
             layout.addWidget(desc_lbl)
 
 
-class SlidingMenu(QFrame):
+class SlidingMenu(QWidget):
     def __init__(self, parent=None, story_manager=None):
         super().__init__(parent)
         self.story_manager = story_manager
-        self.setFixedWidth(400)
-        self.setStyleSheet("""
-            SlidingMenu {
+        # SlidingMenu covers the whole window for click-outside detection
+        self.resize(parent.size())
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        self.menu_width = 400
+        
+        # --- Menu Panel (The actual visible part) ---
+        self.menu_panel = QFrame(self)
+        self.menu_panel.setFixedWidth(self.menu_width)
+        self.menu_panel.setStyleSheet("""
+            QFrame {
                 background-color: #1a1a1a;
                 border-left: 1px solid #333;
             }
@@ -159,15 +224,16 @@ class SlidingMenu(QFrame):
             }
         """)
         
-        # Shadow effect
-        shadow = QGraphicsDropShadowEffect(self)
+        # Shadow effect on the panel
+        shadow = QGraphicsDropShadowEffect(self.menu_panel)
         shadow.setBlurRadius(20)
         shadow.setXOffset(-5)
         shadow.setYOffset(0)
         shadow.setColor(Qt.GlobalColor.black)
-        self.setGraphicsEffect(shadow)
+        self.menu_panel.setGraphicsEffect(shadow)
         
-        layout = QVBoxLayout(self)
+        # Layout INSIDE the panel
+        layout = QVBoxLayout(self.menu_panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         
@@ -181,9 +247,15 @@ class SlidingMenu(QFrame):
         
         self.btn_group = []
         
-        def add_tab(text, index):
+        def add_tab(text, index, icon_name=None):
             btn = QPushButton(text)
             btn.setObjectName("TabBtn")
+            if icon_name:
+                icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "icons", icon_name)
+                if os.path.exists(icon_path):
+                    btn.setIcon(QIcon(icon_path))
+                    btn.setIconSize(QSize(24, 24))
+            
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(lambda: self.switch_tab(index))
@@ -193,7 +265,8 @@ class SlidingMenu(QFrame):
 
         self.btn_inv = add_tab("Inventaire", 0)
         self.btn_equip = add_tab("Équipement", 1)
-        self.btn_comp = add_tab("Compagnons", 2)
+        self.btn_quests = add_tab("Quêtes", 2, "quest.png")
+        self.btn_comp = add_tab("Compagnons", 3)
         
         # Close Button
         btn_close = QPushButton("✕")
@@ -219,7 +292,12 @@ class SlidingMenu(QFrame):
         self.init_equipment_view()
         self.stack.addWidget(self.view_equipment)
         
-        # 3. Companions View
+        # 3. Quests View
+        self.view_quests = QWidget()
+        self.init_quests_view()
+        self.stack.addWidget(self.view_quests)
+
+        # 4. Companions View
         self.view_companions = QWidget()
         self.init_companions_view()
         self.stack.addWidget(self.view_companions)
@@ -227,6 +305,67 @@ class SlidingMenu(QFrame):
         # Initial State
         self.switch_tab(0)
         self.hide() # Hidden by default
+        
+        # Animation
+        self.anim = QPropertyAnimation(self.menu_panel, b"pos")
+        self.anim.setDuration(300)
+        self.anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.anim.finished.connect(self._on_anim_finished)
+        self.is_closing = False
+
+    def resizeEvent(self, event):
+        # Keep menu panel full height and attached to right side (conceptually)
+        # But during animation we control position manually.
+        # When static (open), it should be at width() - menu_width
+        self.menu_panel.setFixedSize(self.menu_width, self.height())
+        if not self.anim.state() == QPropertyAnimation.State.Running and self.isVisible():
+             self.menu_panel.move(self.width() - self.menu_width, 0)
+        
+        super().resizeEvent(event)
+
+    def mousePressEvent(self, event):
+        # Close if clicked outside the menu panel
+        if not self.menu_panel.geometry().contains(event.pos()):
+            self.hide_menu()
+        else:
+            super().mousePressEvent(event)
+
+    def show_menu(self, tab_index=0):
+        # Ensure we cover the parent
+        if self.parent():
+            self.resize(self.parent().size())
+            
+        self.show()
+        self.raise_()
+        self.switch_tab(tab_index)
+        
+        # Animate In
+        start_pos = QPoint(self.width(), 0)
+        end_pos = QPoint(self.width() - self.menu_width, 0)
+        
+        self.menu_panel.move(start_pos)
+        self.anim.stop()
+        self.anim.setStartValue(start_pos)
+        self.anim.setEndValue(end_pos)
+        self.anim.start()
+        
+    def hide_menu(self):
+        if self.is_closing: return
+        self.is_closing = True
+        
+        # Animate Out
+        start_pos = self.menu_panel.pos()
+        end_pos = QPoint(self.width(), 0)
+        
+        self.anim.stop()
+        self.anim.setStartValue(start_pos)
+        self.anim.setEndValue(end_pos)
+        self.anim.start()
+    
+    def _on_anim_finished(self):
+        if self.is_closing:
+            self.hide()
+            self.is_closing = False
 
     def init_inventory_view(self):
         layout = QVBoxLayout(self.view_inventory)
@@ -270,6 +409,20 @@ class SlidingMenu(QFrame):
         self.comp_list.setStyleSheet("background-color: #222; border: 1px solid #444; border-radius: 4px; color: #eee;")
         layout.addWidget(self.comp_list)
 
+    def init_quests_view(self):
+        layout = QVBoxLayout(self.view_quests)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        self.quests_list = QListWidget()
+        self.quests_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.quests_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.quests_list.setStyleSheet("""
+            QListWidget { background-color: #222; border: 1px solid #444; outline: none; border-radius: 4px; }
+            QListWidget::item { border-bottom: 1px solid #333; padding: 0px; }
+            QListWidget::item:hover { background-color: transparent; }
+        """)
+        layout.addWidget(self.quests_list)
+
     def switch_tab(self, index):
         self.stack.setCurrentIndex(index)
         for i, btn in enumerate(self.btn_group):
@@ -288,7 +441,8 @@ class SlidingMenu(QFrame):
         idx = self.stack.currentIndex()
         if idx == 0: self.refresh_inventory()
         elif idx == 1: self.refresh_equipment()
-        elif idx == 2: self.refresh_companions()
+        elif idx == 2: self.refresh_quests()
+        elif idx == 3: self.refresh_companions()
 
     def refresh_inventory(self):
         self.inv_list.clear()
@@ -434,3 +588,53 @@ class SlidingMenu(QFrame):
                 self.comp_list.addItem(f"👤 {npc}")
         else:
             self.comp_list.addItem("Aucun compagnon.")
+
+    def refresh_quests(self):
+        self.quests_list.clear()
+        if not self.story_manager or not self.story_manager.project: return
+        
+        active_ids = self.story_manager.variables.get_var("active_quests", [])
+        completed_ids = self.story_manager.variables.get_var("completed_quests", [])
+        returned_ids = self.story_manager.variables.get_var("returned_quests", [])
+        quest_steps = self.story_manager.variables.get_var("quest_steps", {})
+        
+        has_quests = False
+        
+        # Display Active Quests
+        for qid in active_ids:
+            if qid in returned_ids: continue
+            
+            quest = self.story_manager.project.quests.get(qid)
+            if quest:
+                has_quests = True
+                
+                # Determine current step text
+                step_idx = quest_steps.get(qid, 0)
+                step_text = None
+                if quest.steps and step_idx < len(quest.steps):
+                    step_text = quest.steps[step_idx]
+                elif quest.steps:
+                    step_text = quest.steps[-1] # Fallback to last step if index overflow
+                
+                self._add_quest_item(quest, "active", step_text)
+                
+        # Display Completed Quests
+        for qid in completed_ids:
+            if qid in returned_ids: continue
+            
+            quest = self.story_manager.project.quests.get(qid)
+            if quest:
+                has_quests = True
+                self._add_quest_item(quest, "completed", None)
+
+        if not has_quests:
+            item = QListWidgetItem("Aucune quête active.")
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.quests_list.addItem(item)
+
+    def _add_quest_item(self, quest, status, step_text):
+        widget = QuestItemWidget(quest, status, step_text)
+        item = QListWidgetItem(self.quests_list)
+        item.setSizeHint(widget.sizeHint())
+        self.quests_list.addItem(item)
+        self.quests_list.setItemWidget(item, widget)

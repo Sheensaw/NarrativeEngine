@@ -4,7 +4,7 @@
         "version": "1.0.0",
         "author": "Auteur Anonyme",
         "created_at": 1764327731.8821013,
-        "last_modified": 1764688777.6396194
+        "last_modified": 1765027776.147171
     },
     "graph": {
         "nodes": [
@@ -12,8 +12,8 @@
                 "id": "cdfc8778-7ac7-4456-89a4-b68c75f209b9",
                 "type": "start",
                 "title": "Début",
-                "pos_x": -306.0,
-                "pos_y": -324.2152173913045,
+                "pos_x": -392.0,
+                "pos_y": -351.2152173913046,
                 "content": {
                     "text": "Bonjour",
                     "image": null,
@@ -37,16 +37,6 @@
                             "modify_text_enabled": false,
                             "target_node_id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
                             "text": "Aller à la Scène 3"
-                        },
-                        {
-                            "after_use": "delete",
-                            "condition": "",
-                            "events": [],
-                            "id": "553e1102-7b15-4bd2-a819-99b0f4598c24",
-                            "is_one_shot": false,
-                            "modify_text_enabled": false,
-                            "target_node_id": "",
-                            "text": "Rester ici"
                         }
                     ],
                     "coordinates": {
@@ -75,8 +65,8 @@
                 "id": "e83986b5-c4a3-4a56-819f-399a56863fef",
                 "type": "dialogue",
                 "title": "Scene 2",
-                "pos_x": -468.0,
-                "pos_y": -45.21521739130452,
+                "pos_x": -625.0,
+                "pos_y": 46.78478260869542,
                 "content": {
                     "text": "Vous trouvez un éclat d'osbsidienne.",
                     "image": null,
@@ -137,11 +127,11 @@
             {
                 "id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
                 "type": "dialogue",
-                "title": "Scene 3",
-                "pos_x": -137.5,
-                "pos_y": -45.15000000000015,
+                "title": "gobelin_quest",
+                "pos_x": -237.0,
+                "pos_y": 46.14999999999981,
                 "content": {
-                    "text": "",
+                    "text": "Le chemin arrive à un point où il se sépare en deux voies distinctes.\n\nL'une, à droite, est un sentier peu marqué, s'engageant sous des arbres denses dont le sol est parsemé de racines apparentes et couvert d'une épaisse couche de feuilles mortes.\n\nL'autre, à gauche, est une piste plus large qui s'incurve autour d'un grand affleurement rocheux avant de s'éloigner de la ligne d'arbres la plus sombre.\n\nUn gobelin est présent au centre de l'embranchement.\nIl est assis dos à une souche, manipulant un petit objet.\nLa créature ne montre aucun signe d'avoir perçu votre présence.\nElle est vêtue de hardes et une simple bourse est posée près d'elle.",
                     "image": null,
                     "coordinates": {
                         "continent": "Eldaron",
@@ -152,24 +142,51 @@
                     },
                     "choices": [
                         {
-                            "id": "9102dd60-6aa5-4117-888b-5a1a2655e50b",
-                            "text": "Retour",
-                            "target_node_id": "cdfc8778-7ac7-4456-89a4-b68c75f209b9",
-                            "condition": "",
-                            "is_one_shot": false,
                             "after_use": "delete",
-                            "events": [],
-                            "modify_text_enabled": false
+                            "condition": "",
+                            "events": [
+                                {
+                                    "parameters": {
+                                        "quest_id": "5832c702-88e1-441d-8461-ada936e3fa63"
+                                    },
+                                    "type": "showQuest"
+                                }
+                            ],
+                            "id": "0acb1e82-8341-44a9-ba2d-364accfab2a8",
+                            "is_one_shot": false,
+                            "modify_text_enabled": false,
+                            "target_node_id": "",
+                            "text": "Voir la quête"
                         },
                         {
-                            "text": "Aller à la Scène 2",
-                            "target_node_id": "e83986b5-c4a3-4a56-819f-399a56863fef",
+                            "after_use": "delete",
                             "condition": "",
+                            "events": [],
                             "id": "7980b60e-8e3e-4b49-9893-da8d2dcbe161",
                             "is_one_shot": false,
-                            "after_use": "delete",
                             "modify_text_enabled": false,
-                            "events": []
+                            "target_node_id": "e83986b5-c4a3-4a56-819f-399a56863fef",
+                            "text": "Aller à la Scène 2"
+                        },
+                        {
+                            "after_use": "delete",
+                            "condition": "",
+                            "events": [],
+                            "id": "53581797-54e6-4aab-b54e-4dbeeb36949b",
+                            "is_one_shot": false,
+                            "modify_text_enabled": false,
+                            "target_node_id": "523a9f57",
+                            "text": "Aller à la Scène 4"
+                        },
+                        {
+                            "after_use": "delete",
+                            "condition": "",
+                            "events": [],
+                            "id": "9102dd60-6aa5-4117-888b-5a1a2655e50b",
+                            "is_one_shot": false,
+                            "modify_text_enabled": false,
+                            "target_node_id": "cdfc8778-7ac7-4456-89a4-b68c75f209b9",
+                            "text": "Retour"
                         }
                     ]
                 },
@@ -178,21 +195,45 @@
                     "on_exit": []
                 },
                 "properties": {}
+            },
+            {
+                "id": "523a9f57",
+                "type": "dialogue",
+                "title": "Scene 4",
+                "pos_x": 94.0,
+                "pos_y": 54.0,
+                "content": {
+                    "text": "Vous êtes à l'orée du bois.",
+                    "image": null,
+                    "choices": [
+                        {
+                            "id": "a5cffb69-f0df-4f23-b634-1d6d1deaa73a",
+                            "text": "Retour",
+                            "target_node_id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
+                            "condition": "",
+                            "is_one_shot": false,
+                            "after_use": "delete",
+                            "events": [],
+                            "modify_text_enabled": false
+                        }
+                    ]
+                },
+                "logic": {
+                    "on_enter": [
+                        {
+                            "type": "completeQuest",
+                            "parameters": {
+                                "quest_id": "5832c702-88e1-441d-8461-ada936e3fa63"
+                            }
+                        }
+                    ],
+                    "on_exit": []
+                },
+                "properties": {}
             }
         ],
         "edges": [],
-        "groups": [
-            {
-                "id": "5f0efcfa-b49c-4cfc-b4ae-b9cd30cc5ac3",
-                "title": "test",
-                "pos_x": -528.0,
-                "pos_y": -413.2152173913045,
-                "width": 680.4592499999999,
-                "height": 667.7515,
-                "color": "#444444",
-                "properties": {}
-            }
-        ]
+        "groups": []
     },
     "database": {
         "variables": {
@@ -1142,7 +1183,26 @@
                 }
             }
         ],
-        "quests": [],
+        "quests": [
+            {
+                "id": "5832c702-88e1-441d-8461-ada936e3fa63",
+                "title": "l'Orée de la forêrt",
+                "description": "Se rendre à l'orée de la forêt",
+                "presentation_text": "",
+                "status": "not_started",
+                "loot": {
+                    "xp": 0,
+                    "items": {
+                        "pomme_rouge": 2,
+                        "arbalete_legere": 1
+                    },
+                    "gold": 0
+                },
+                "steps": [],
+                "return_scene_id": "cd283fa2-aa54-4193-afd2-ccbe73db1c6a",
+                "is_main_quest": false
+            }
+        ],
         "locations": [
             {
                 "id": "Lorn_Place_Royale",

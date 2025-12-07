@@ -57,7 +57,7 @@ class NodeScene(QGraphicsScene):
         if event.button() == Qt.MouseButton.LeftButton:
             self._start_move_positions = {}
             for item in self.selectedItems():
-                if isinstance(item, NodeItem):
+                if isinstance(item, (NodeItem, GroupItem)):
                     self._start_move_positions[item] = item.pos()
 
     def mouseReleaseEvent(self, event):
@@ -74,7 +74,7 @@ class NodeScene(QGraphicsScene):
                     old_pos_list.append(old_pos)
                     new_pos_list.append(item.pos())
             
-            if nodes and self.undo_stack:
+            if nodes and self.undo_stack is not None:
                 cmd = MoveNodeCommand(nodes, new_pos_list, old_pos_list)
                 self.undo_stack.push(cmd)
             

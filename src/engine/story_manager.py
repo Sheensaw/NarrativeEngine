@@ -30,19 +30,6 @@ class StoryManager:
         
         # Lore Manager
         # Hardcoded path for now as per view.py
-        lore_path = r"c:\Users\garwi\Documents\Twine\Stories\Sword\server\lore"
-        self.lore_manager = LoreManager(lore_path)
-        self.lore_nodes = {} # Keep for compatibility if needed, but we use lore_manager.locations now
-
-    def load_project(self, project: ProjectModel):
-        """Charge un projet et initialise l'état."""
-        self.project = project
-        self.variables.load_state(project.variables)  # Charge les valeurs par défaut
-        self.current_node = None
-        self.history.clear()
-
-    def start_game(self):
-        """Lance le jeu en trouvant le premier nœud."""
         if not self.project:
             return
 
@@ -55,6 +42,41 @@ class StoryManager:
 
         if start_node:
             self.set_current_node(start_node.id)
+
+    def load_project(self, project: ProjectModel):
+        """Charge un projet et initialise l'état."""
+        self.project = project
+        self.variables.load_state(project.variables)
+        self.parser.set_project(project)
+        
+        # Initialize LoreManager if it exists
+        if hasattr(self, 'lore_manager'):
+             self.lore_manager.set_project(project)
+
+        self.current_node = None
+        self.history.clear()
+        
+        # Find start node
+        start_node = next((n for n in self.project.nodes.values() if n.type == NodeType.START), None)
+        if not start_node and self.project.nodes:
+            start_node = list(self.project.nodes.values())[0]
+            
+        if start_node:
+            self.set_current_node(start_node.id)
+
+    def start_game(self):
+        """Démarre le jeu en trouvant le nœud de départ."""
+        if not self.project: return
+
+        # Find start node
+        start_node = next((n for n in self.project.nodes.values() if n.type == NodeType.START), None)
+        if not start_node and self.project.nodes:
+            start_node = list(self.project.nodes.values())[0]
+            
+        if start_node:
+            self.set_current_node(start_node.id)
+        else:
+            print("[StoryManager] Aucun nœud de départ trouvé.")
 
     def set_current_node(self, node_id: str):
         """
@@ -217,11 +239,6 @@ class StoryManager:
             return []
 
         choices = []
-
-        # Stratégie : 
-        # 1. Si le nœud a des choix définis explicitement dans content['choices'], on les utilise.
-        # 2. Sinon, on déduit les choix depuis les liens sortants (Legacy/Fallback).
-
         structured_choices = self.current_node.content.get("choices", [])
         
         if structured_choices:
@@ -236,43 +253,55 @@ class StoryManager:
                     if after_use == "delete":
                         continue
                     elif after_use == "replace":
-                        # Use replacement data
                         rep_data = choice_data.get("replacement_data", {})
                         choices.append({
                             "text": rep_data.get("text", "Choix (Remplacement)"),
                             "target_id": rep_data.get("target_node_id"),
-                            "original_data": choice_data, # Keep ref if needed
-                            "is_replacement": True
+                            "original_data": choice_data,
+                            "is_replacement": True,
+                            "disabled": False
                         })
                         continue
                     elif after_use == "disable":
-                        # Show but disabled
                         choices.append({
                             "text": choice_data.get("text", "Choix (Désactivé)"),
-                            "target_id": None, # No target
+                            "target_id": None,
                             "data": choice_data,
                             "disabled": True
                         })
                         continue
                     elif after_use == "none":
-                        # Show normally (but it was used)
                         pass
 
-                # Normal Choice Logic
+                # Condition Check
                 condition = choice_data.get("condition", "")
                 if not self.parser.evaluate_condition(condition):
                     continue
+                
+                # --- NEW: Filter startQuest/showQuest events if quest active/done ---
+                events = choice_data.get("events", [])
+                quest_event = next((e for e in events if e.get("type") in ["startQuest", "start_quest", "showQuest", "show_quest"]), None)
+                if quest_event:
+                    qid = quest_event.get("parameters", {}).get("quest_id")
+                    if qid:
+                        active_q = self.variables.get_var("active_quests", [])
+                        completed_q = self.variables.get_var("completed_quests", [])
+                        returned_q = self.variables.get_var("returned_quests", [])
+                        if qid in active_q or qid in completed_q or qid in returned_q:
+                            continue
 
-                target_id = choice_data.get("target_node_id")
+                # Add Choice
+                disable_choice = False
                 
                 choices.append({
                     "text": choice_data.get("text", "Choix"),
-                    "target_id": target_id,
-                    "data": choice_data # Pass full data for make_choice
+                    "target_id": choice_data.get("target_node_id"),
+                    "data": choice_data,
+                    "disabled": disable_choice
                 })
+
         else:
             # Mode Legacy (Déduction depuis les Edges)
-            # Trouver tous les liens partant de ce nœud
             outgoing_edges = [
                 e for e in self.project.edges
                 if e.start_node_id == self.current_node.id
@@ -284,7 +313,6 @@ class StoryManager:
                 if not target_node:
                     continue
 
-                # On essaie de récupérer des infos de choix legacy si elles existent
                 node_choices_data = self.current_node.content.get("choices_legacy", [])
                 choice_data = {}
                 if len(node_choices_data) > edge.start_socket_index:
@@ -293,8 +321,36 @@ class StoryManager:
                 choices.append({
                     "text": choice_data.get("text", f"Vers {target_node.title}"),
                     "target_id": target_node.id,
-                    "edge": edge
+                    "edge": edge,
+                    "disabled": False
                 })
+
+        # --- NEW: Inject Return Quest Choices ---
+        # Check all completed quests (ready to return)
+        completed_quests = self.variables.get_var("completed_quests", [])
+        returned_quests = self.variables.get_var("returned_quests", [])
+        
+        if self.project:
+            for q_id in completed_quests:
+                if q_id in returned_quests: continue
+                
+                quest = self.project.quests.get(q_id)
+                if not quest: continue
+                
+                # Check if we are at the return scene
+                if quest.return_scene_id and quest.return_scene_id == self.current_node.id:
+                    choices.append({
+                        "text": f"Rendre la quête : {quest.title}",
+                        "target_id": None, 
+                        "data": {
+                            "id": f"return_{q_id}",
+                            "text": f"Rendre la quête : {quest.title}",
+                            "events": [
+                                { "type": "returnQuest", "parameters": { "quest_id": q_id } }
+                            ]
+                        },
+                        "disabled": False
+                    })
 
         return choices
 

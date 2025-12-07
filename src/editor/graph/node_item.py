@@ -72,16 +72,16 @@ class NodeItem(QGraphicsItem):
         self.bg_color = QColor(COLORS["node_bg"])
 
     def update_preview(self):
-        """Met à jour le texte de prévisualisation (Contenu + Choix)."""
+        """Met à jour le texte de prévisualisation (Contenu + Choix) et ajuste la hauteur."""
         content_text = self.model.content.get("text", "")
-        # Truncate content
+        # Truncate content for display only
         preview_text = (content_text[:50] + '...') if len(content_text) > 50 else content_text
         
-        # Add Choices
+        # Add Choices (Show ALL)
         choices = self.model.content.get("choices", [])
         if choices:
             preview_text += "\n\n"
-            for i, c in enumerate(choices[:3]): # Max 3 choices in preview
+            for i, c in enumerate(choices):
                 target_id = c.get("target_node_id", "?")
                 target_name = target_id
                 
@@ -97,10 +97,17 @@ class NodeItem(QGraphicsItem):
                      target_name = target_id[:8] + "..."
 
                 preview_text += f"[{i+1}] {c.get('text', 'Choix')} -> {target_name}\n"
-            if len(choices) > 3:
-                preview_text += "..."
         
+        self.prepareGeometryChange()
         self._preview_item.setPlainText(preview_text)
+        
+        # Calculate dynamic height
+        # Base header (40) + Text Bounding Rect + Padding (10)
+        text_height = self._preview_item.boundingRect().height()
+        needed_height = 50 + text_height + 10 
+        
+        # Ensure minimum height
+        self.height = max(NODE_HEIGHT, needed_height)
         
         # Tooltip with full content
         self.setToolTip(content_text)
@@ -111,6 +118,7 @@ class NodeItem(QGraphicsItem):
 
         # Update Location Display
         self.update_location_display()
+        self.update() # Force redraw
 
     def update_location_display(self):
         """Met à jour l'affichage du lieu."""
@@ -149,7 +157,7 @@ class NodeItem(QGraphicsItem):
         """Dessine le nœud."""
         # 1. Corps (Body) - Fond général
         path_body = QPainterPath()
-        path_body.addRoundedRect(0, 0, self.width, self.height, self.radius, self.radius)
+        path_body.addRoundedRect(QRectF(0, 0, self.width, self.height), self.radius, self.radius)
         
         # Gradient background? For now simple flat color is cleaner
         painter.setBrush(QBrush(self.bg_color))
@@ -166,14 +174,15 @@ class NodeItem(QGraphicsItem):
         painter.drawPath(path_header)
 
         # 3. Bordure (Sélection)
+        rect = QRectF(0, 0, self.width, self.height)
         if self.isSelected():
             painter.setPen(QPen(QColor(COLORS["node_border_selected"]), 2.0))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRoundedRect(0, 0, self.width, self.height, self.radius, self.radius)
+            painter.drawRoundedRect(rect, self.radius, self.radius)
         else:
             painter.setPen(QPen(QColor(COLORS["node_border_default"]), 1.5))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRoundedRect(0, 0, self.width, self.height, self.radius, self.radius)
+            painter.drawRoundedRect(rect, self.radius, self.radius)
 
     def itemChange(self, change, value):
         """Callback QT quand l'item change (ex: déplacement)."""
@@ -242,9 +251,12 @@ class NodeItem(QGraphicsItem):
             self.model.content["text"] = new_text
             
             # Remove widget
-            self.proxy_widget.setWidget(None)
+            # Remove widget
             self.scene().removeItem(self.proxy_widget)
             self.proxy_widget = None
+            # Explicit cleanup for container/text_edit is handled by Qt ownership if parented correctly,
+            # but setting proxy widget to None is safer to do locally.
+            self.text_edit = None
             
         self.is_expanded = False
         self.setZValue(self.original_z)
